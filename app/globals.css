@@ -129,3 +129,22 @@
     @apply font-sans;
   }
 }
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark .devscope-shell [class*="text-[#5"],
+.dark .devscope-shell [class*="text-[#6"],
+.dark .devscope-shell [class*="text-[#7"],
+.dark .devscope-shell [class*="text-[#8"],
+.dark .devscope-shell [class*="text-[#9"],
+.dark .devscope-shell [class*="text-[#a"] {
+  color: #aab4af;
+}
+
+.dark .devscope-shell [class*="border-[#c"],
+.dark .devscope-shell [class*="border-[#d"],
+.dark .devscope-shell [class*="border-[#e"] {
+  border-color: #2b3530;
+}

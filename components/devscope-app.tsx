@@ -15,14 +15,16 @@ import {
   Library,
   Link2,
   Menu,
+  Moon,
   Newspaper,
   Plus,
   Search,
   Settings,
   Sparkles,
+  Sun,
   X,
 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 const navItems = [
   { id: "today", label: "Today", icon: Newspaper },
@@ -50,6 +52,16 @@ export function DevscopeApp({
   const [showAdd, setShowAdd] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [darkMode, setDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("devscope-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const shouldUseDark = savedTheme ? savedTheme === "dark" : prefersDark;
+
+    document.documentElement.classList.toggle("dark", shouldUseDark);
+    queueMicrotask(() => setDarkMode(shouldUseDark));
+  }, []);
 
   const topics = useMemo(
     () => [
@@ -73,6 +85,15 @@ export function DevscopeApp({
   }, [query, stories, topic]);
 
   const savedStories = stories.filter((story) => story.is_saved);
+
+  function toggleTheme() {
+    setDarkMode((current) => {
+      const next = !current;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("devscope-theme", next ? "dark" : "light");
+      return next;
+    });
+  }
 
   async function addResource(input: NewResource) {
     const response = await fetch("/api/resources", {
@@ -114,9 +135,9 @@ export function DevscopeApp({
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f6f3] text-[#1c211f]">
+    <div className="devscope-shell min-h-screen bg-[#f5f6f3] text-[#1c211f] transition-colors dark:bg-[#101513] dark:text-[#edf1ee]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#dfe2dc] bg-[#fafbf8] px-4 py-5 transition-transform lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#dfe2dc] bg-[#fafbf8] px-4 py-5 transition-[transform,background-color] dark:border-[#2b3530] dark:bg-[#151b18] lg:translate-x-0 ${
           mobileNav ? "translate-x-0" : "-translate-x-full"
         }`}
       >
@@ -148,8 +169,8 @@ export function DevscopeApp({
                 }}
                 className={`flex h-10 w-full items-center gap-3 px-3 text-sm font-medium transition-colors ${
                   view === item.id
-                    ? "bg-[#e5eee9] text-[#174d3f]"
-                    : "text-[#5d6661] hover:bg-[#eef0ec]"
+                    ? "bg-[#e5eee9] text-[#174d3f] dark:bg-[#23382f] dark:text-[#9ad1bc]"
+                    : "text-[#5d6661] hover:bg-[#eef0ec] dark:text-[#a7b1ac] dark:hover:bg-[#1e2823]"
                 }`}
               >
                 <Icon className="size-4" />
@@ -187,7 +208,7 @@ export function DevscopeApp({
           </div>
         ) : null}
 
-        <div className="mt-auto border-t border-[#e3e5e0] pt-4">
+        <div className="mt-auto border-t border-[#e3e5e0] pt-4 dark:border-[#2b3530]">
           <button className="flex h-9 w-full items-center gap-3 px-3 text-sm text-[#66706b] hover:text-[#1c211f]">
             <Settings className="size-4" />
             Settings
@@ -208,7 +229,7 @@ export function DevscopeApp({
       ) : null}
 
       <main className="min-h-screen lg:ml-64">
-        <header className="sticky top-0 z-20 flex h-16 items-center border-b border-[#dfe2dc] bg-[#f5f6f3]/95 px-4 backdrop-blur md:px-8">
+        <header className="sticky top-0 z-20 flex h-16 items-center border-b border-[#dfe2dc] bg-[#f5f6f3]/95 px-4 backdrop-blur dark:border-[#2b3530] dark:bg-[#101513]/95 md:px-8">
           <button
             className="mr-3 grid size-9 place-items-center lg:hidden"
             aria-label="Open navigation"
@@ -222,10 +243,18 @@ export function DevscopeApp({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search stories, sources, topics..."
-              className="h-9 w-full border border-[#d8dcd6] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#6a8f82]"
+              className="h-9 w-full border border-[#d8dcd6] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#6a8f82] dark:border-[#34413b] dark:bg-[#171e1b] dark:text-[#edf1ee] dark:placeholder:text-[#75817b]"
             />
           </div>
-          <button className="ml-auto mr-2 grid size-9 place-items-center text-[#5f6964]" aria-label="Notifications">
+          <button
+            onClick={toggleTheme}
+            className="ml-auto grid size-9 place-items-center text-[#5f6964] hover:bg-[#e9ece7] dark:text-[#b5bdb9] dark:hover:bg-[#202a25]"
+            aria-label={darkMode ? "Use light mode" : "Use dark mode"}
+            title={darkMode ? "Use light mode" : "Use dark mode"}
+          >
+            {darkMode ? <Sun className="size-4" /> : <Moon className="size-4" />}
+          </button>
+          <button className="mr-2 grid size-9 place-items-center text-[#5f6964] dark:text-[#b5bdb9]" aria-label="Notifications">
             <Bell className="size-4" />
           </button>
           <button
@@ -341,7 +370,7 @@ function TodayView({
               className={`h-8 shrink-0 border px-3 text-xs font-semibold ${
                 topic === option
                   ? "border-[#1e5f4d] bg-[#1e5f4d] text-white"
-                  : "border-[#d4d9d2] bg-white text-[#626b66]"
+                  : "border-[#d4d9d2] bg-white text-[#626b66] dark:border-[#34413b] dark:bg-[#171e1b] dark:text-[#b4bdb8]"
               }`}
             >
               {option}
@@ -410,7 +439,7 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
   }).format(new Date(story.published_at));
 
   return (
-    <article className="group grid grid-cols-[34px_minmax(0,1fr)_36px] gap-3 border-b border-[#d8dcd6] py-5 md:grid-cols-[42px_minmax(0,1fr)_80px] md:gap-4">
+    <article className="group grid grid-cols-[34px_minmax(0,1fr)_36px] gap-3 border-b border-[#d8dcd6] py-5 dark:border-[#2b3530] md:grid-cols-[42px_minmax(0,1fr)_80px] md:gap-4">
       <div className="font-mono text-xs text-[#a0a7a3]">{String(index + 1).padStart(2, "0")}</div>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
@@ -423,7 +452,7 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
         <h3 className="text-[17px] font-bold leading-6 group-hover:text-[#1e5f4d]">{story.title}</h3>
         {story.summary ? <p className="mt-2 text-sm leading-6 text-[#65706a]">{story.summary}</p> : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          {story.topics.map((item) => <span key={item} className="bg-[#e9ece7] px-2 py-1 text-[10px] font-semibold text-[#66706b]">{item}</span>)}
+          {story.topics.map((item) => <span key={item} className="bg-[#e9ece7] px-2 py-1 text-[10px] font-semibold text-[#66706b] dark:bg-[#202a25] dark:text-[#b3bcb7]">{item}</span>)}
           <span className="text-[11px] text-[#949b97]">
             {published}
             {story.read_minutes ? ` · ${story.read_minutes} min read` : ""}
@@ -453,7 +482,7 @@ function LibraryView({ resources }: { resources: Resource[] }) {
           {resources.map((resource) => (
             <div key={resource.id} className="grid grid-cols-[minmax(0,1fr)_90px_90px] items-center py-5">
               <div className="flex min-w-0 items-center gap-3">
-                <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d]">
+                <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d] dark:bg-[#1c2521] dark:text-[#8bc5af]">
                   {resource.type === "PDF" ? <FileText className="size-4" /> : resource.type === "Note" ? <Newspaper className="size-4" /> : <Link2 className="size-4" />}
                 </span>
                 <div className="min-w-0">
@@ -519,22 +548,22 @@ function AddResourceModal({ onClose, onAdd }: { onClose: () => void; onAdd: (res
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-[#17201d]/40 p-4">
-      <div className="w-full max-w-md border border-[#d9ddd7] bg-[#fafbf8] p-6 shadow-2xl">
+      <div className="w-full max-w-md border border-[#d9ddd7] bg-[#fafbf8] p-6 shadow-2xl dark:border-[#34413b] dark:bg-[#151b18]">
         <div className="flex items-start justify-between">
           <div><p className="text-xs font-semibold uppercase text-[#1e6b55]">Personal collection</p><h2 className="mt-1 font-heading text-2xl font-semibold">Add a resource</h2></div>
           <button onClick={onClose} className="grid size-8 place-items-center" aria-label="Close"><X className="size-4" /></button>
         </div>
         <form onSubmit={submit} className="mt-6">
-          <div className="grid grid-cols-3 border border-[#d5d9d3] bg-white p-1">
-            {(["Link", "PDF", "Note"] as const).map((option) => <button type="button" key={option} onClick={() => setType(option)} className={`h-8 text-xs font-semibold ${type === option ? "bg-[#e2ece7] text-[#174d3f]" : "text-[#7b837f]"}`}>{option}</button>)}
+          <div className="grid grid-cols-3 border border-[#d5d9d3] bg-white p-1 dark:border-[#34413b] dark:bg-[#101513]">
+            {(["Link", "PDF", "Note"] as const).map((option) => <button type="button" key={option} onClick={() => setType(option)} className={`h-8 text-xs font-semibold ${type === option ? "bg-[#e2ece7] text-[#174d3f] dark:bg-[#264036] dark:text-[#a6d8c5]" : "text-[#7b837f] dark:text-[#929c97]"}`}>{option}</button>)}
           </div>
           <label className="mt-5 block text-xs font-semibold" htmlFor="title">Title</label>
-          <input id="title" name="title" required autoFocus className="mt-2 h-10 w-full border border-[#d5d9d3] bg-white px-3 text-sm outline-none focus:border-[#5d8476]" />
+          <input id="title" name="title" required autoFocus className="mt-2 h-10 w-full border border-[#d5d9d3] bg-white px-3 text-sm outline-none focus:border-[#5d8476] dark:border-[#34413b] dark:bg-[#101513] dark:text-[#edf1ee]" />
           <label className="mt-4 block text-xs font-semibold" htmlFor="url">{type === "Note" ? "Reference URL (optional)" : "URL"}</label>
-          <input id="url" name="url" type={type === "Note" ? "text" : "url"} required={type !== "Note"} className="mt-2 h-10 w-full border border-[#d5d9d3] bg-white px-3 text-sm outline-none focus:border-[#5d8476]" />
+          <input id="url" name="url" type={type === "Note" ? "text" : "url"} required={type !== "Note"} className="mt-2 h-10 w-full border border-[#d5d9d3] bg-white px-3 text-sm outline-none focus:border-[#5d8476] dark:border-[#34413b] dark:bg-[#101513] dark:text-[#edf1ee]" />
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <div className="mt-6 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="h-9 border border-[#d5d9d3] px-4 text-xs font-semibold">Cancel</button>
+            <button type="button" onClick={onClose} className="h-9 border border-[#d5d9d3] px-4 text-xs font-semibold dark:border-[#3b4741]">Cancel</button>
             <button type="submit" disabled={saving} className="h-9 bg-[#1e5f4d] px-4 text-xs font-semibold text-white disabled:opacity-50">{saving ? "Saving..." : "Add to library"}</button>
           </div>
         </form>
