@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import {
   Sheet,
   SheetContent,
@@ -20,7 +21,13 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { NewResource, Resource, Story } from "@/lib/database.types";
+import type {
+  FeedSource,
+  NewFeedSource,
+  NewResource,
+  Resource,
+  Story,
+} from "@/lib/database.types";
 import {
   Bell,
   Bookmark,
@@ -37,6 +44,8 @@ import {
   Moon,
   Newspaper,
   Plus,
+  PlugZap,
+  Rss,
   Search,
   Settings,
   Sparkles,
@@ -49,6 +58,7 @@ const navItems = [
   { id: "today", label: "Today", icon: Newspaper },
   { id: "library", label: "Library", icon: Library },
   { id: "inbox", label: "Reading queue", icon: Inbox },
+  { id: "plugins", label: "Plugins", icon: PlugZap },
 ];
 
 const DISPLAY_LOCALE = "en-US";
@@ -68,10 +78,12 @@ function getExternalHref(url: string | null) {
 export function DevscopeApp({
   initialStories,
   initialResources,
+  initialFeedSources,
   renderedAt,
 }: Readonly<{
   initialStories: Story[];
   initialResources: Resource[];
+  initialFeedSources: FeedSource[];
   renderedAt: string;
 }>) {
   const [view, setView] = useState("today");
@@ -79,7 +91,9 @@ export function DevscopeApp({
   const [query, setQuery] = useState("");
   const [stories, setStories] = useState(initialStories);
   const [resources, setResources] = useState(initialResources);
+  const [feedSources, setFeedSources] = useState(initialFeedSources);
   const [showAdd, setShowAdd] = useState(false);
+  const [showAddSource, setShowAddSource] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
@@ -161,6 +175,44 @@ export function DevscopeApp({
         ),
       );
       setNotice("The bookmark could not be saved.");
+    }
+  }
+
+  async function addFeedSource(input: NewFeedSource) {
+    const response = await fetch("/api/feed-sources", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    const result = (await response.json()) as FeedSource | { error: string };
+    if (!response.ok) throw new Error("error" in result ? result.error : "Save failed.");
+
+    setFeedSources((current) => [result as FeedSource, ...current]);
+    setShowAddSource(false);
+    setNotice("Feed source saved to the database.");
+  }
+
+  async function toggleFeedSource(source: FeedSource) {
+    const nextValue = !source.is_enabled;
+    setFeedSources((current) =>
+      current.map((item) =>
+        item.id === source.id ? { ...item, is_enabled: nextValue } : item,
+      ),
+    );
+
+    const response = await fetch(`/api/feed-sources/${source.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isEnabled: nextValue }),
+    });
+
+    if (!response.ok) {
+      setFeedSources((current) =>
+        current.map((item) =>
+          item.id === source.id ? { ...item, is_enabled: source.is_enabled } : item,
+        ),
+      );
+      setNotice("The source status could not be saved.");
     }
   }
 
@@ -257,12 +309,23 @@ export function DevscopeApp({
           />
         ) : view === "library" ? (
           <LibraryView resources={resources} />
+        ) : view === "plugins" ? (
+          <PluginsView
+            sources={feedSources}
+            onAdd={() => setShowAddSource(true)}
+            onToggle={toggleFeedSource}
+          />
         ) : (
           <QueueView stories={savedStories} toggleSaved={toggleSaved} />
         )}
       </main>
 
       <AddResourceDialog open={showAdd} onOpenChange={setShowAdd} onAdd={addResource} />
+      <AddFeedSourceDialog
+        open={showAddSource}
+        onOpenChange={setShowAddSource}
+        onAdd={addFeedSource}
+      />
     </div>
   );
 }
@@ -592,6 +655,99 @@ function LibraryView({ resources }: { resources: Resource[] }) {
   );
 }
 
+function PluginsView({
+  sources,
+  onAdd,
+  onToggle,
+}: {
+  sources: FeedSource[];
+  onAdd: () => void;
+  onToggle: (source: FeedSource) => void;
+}) {
+  const enabledCount = sources.filter((source) => source.is_enabled).length;
+
+  return (
+    <div className="mx-auto max-w-262.5 px-4 py-8 md:px-8 md:py-10">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#d8dcd6] pb-7">
+        <div>
+          <p className="text-xs font-semibold uppercase text-[#1e6b55]">Source plugins</p>
+          <h1 className="mt-2 font-heading text-3xl font-semibold md:text-4xl">Feed sources</h1>
+          <p className="mt-2 text-sm text-[#69716d]">
+            {enabledCount} of {sources.length} source{sources.length === 1 ? "" : "s"} enabled.
+          </p>
+        </div>
+        <Button onClick={onAdd} size="sm">
+          <Plus className="size-4" />
+          Add source
+        </Button>
+      </div>
+
+      {sources.length ? (
+        <div className="mt-6 divide-y divide-[#d8dcd6] border-t border-[#cbd1ca]">
+          {sources.map((source) => {
+            const href = getExternalHref(source.url);
+            const lastSynced = source.last_synced_at
+              ? new Intl.DateTimeFormat(DISPLAY_LOCALE, {
+                  month: "short",
+                  day: "numeric",
+                  timeZone: DISPLAY_TIME_ZONE,
+                }).format(new Date(source.last_synced_at))
+              : "Not synced yet";
+
+            return (
+              <div key={source.id} className="flex items-center gap-3 py-5">
+                <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d] dark:bg-[#1c2521] dark:text-[#8bc5af]">
+                  {source.provider === "GitHub" ? <GitFork className="size-4" /> : <Rss className="size-4" />}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate text-sm font-semibold">{source.name}</p>
+                    <Badge variant="secondary">{source.provider}</Badge>
+                    {!source.is_enabled ? <Badge variant="outline">Paused</Badge> : null}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8a928e]">
+                    <span className="truncate">{source.url}</span>
+                    <span>Last sync: {lastSynced}</span>
+                  </div>
+                  {source.topics.length ? (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {source.topics.map((topic) => (
+                        <Badge key={topic} variant="outline">{topic}</Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                {href ? (
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="grid size-8 place-items-center text-[#747d78] hover:bg-[#e9ece7] hover:text-[#1e5f4d] dark:hover:bg-[#202a25] dark:hover:text-[#8bc5af]"
+                    aria-label={`Open ${source.name}`}
+                    title="Open source"
+                  >
+                    <ExternalLink className="size-4" />
+                  </a>
+                ) : null}
+                <Switch
+                  checked={source.is_enabled}
+                  onCheckedChange={() => onToggle(source)}
+                  aria-label={source.is_enabled ? `Disable ${source.name}` : `Enable ${source.name}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState
+          title="No feed sources yet"
+          text="Add an RSS, GitHub, arXiv, npm, or custom source to configure your feed."
+        />
+      )}
+    </div>
+  );
+}
+
 function QueueView({ stories, toggleSaved }: { stories: Story[]; toggleSaved: (story: Story) => void }) {
   return (
     <div className="mx-auto max-w-225 px-4 py-8 md:px-8 md:py-10">
@@ -682,6 +838,87 @@ function AddResourceDialog({
           <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Add to library"}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddFeedSourceDialog({
+  open,
+  onOpenChange,
+  onAdd,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onAdd: (source: NewFeedSource) => Promise<void>;
+}) {
+  const [provider, setProvider] = useState<FeedSource["provider"]>("RSS");
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    const data = new FormData(event.currentTarget);
+    const topics = String(data.get("topics"))
+      .split(",")
+      .map((topic) => topic.trim())
+      .filter(Boolean);
+
+    try {
+      await onAdd({
+        name: String(data.get("name")).trim(),
+        provider,
+        url: String(data.get("url")).trim(),
+        topics,
+      });
+      setSaving(false);
+    } catch (error_) {
+      setError(error_ instanceof Error ? error_.message : "Could not save source.");
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add feed source</DialogTitle>
+          <DialogDescription>
+            Configure a source for your next feed ingestion run.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="mt-6">
+          <ToggleGroup
+            value={[provider]}
+            onValueChange={(value) => {
+              const nextProvider = value.at(-1) as FeedSource["provider"] | undefined;
+              if (nextProvider) setProvider(nextProvider);
+            }}
+            spacing={0}
+            variant="outline"
+            size="sm"
+            className="grid w-full grid-cols-5"
+          >
+            {(["RSS", "GitHub", "arXiv", "npm", "Custom"] as const).map((option) => (
+              <ToggleGroupItem type="button" key={option} value={option} className="w-full text-xs">
+                {option}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+          <label className="mt-5 block text-xs font-semibold" htmlFor="source-name">Name</label>
+          <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" />
+          <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
+          <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
+          <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
+          <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
+          {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
+          <DialogFooter className="mt-6">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Add source"}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

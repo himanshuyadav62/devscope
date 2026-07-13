@@ -68,3 +68,40 @@ export const resources = pgTable(
     check("resources_type_check", sql`${table.type} in ('Link', 'PDF', 'Note')`),
   ],
 );
+
+export const feedSources = pgTable(
+  "feed_sources",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    provider: text("provider")
+      .$type<"RSS" | "GitHub" | "arXiv" | "npm" | "Custom">()
+      .notNull(),
+    url: text("url").notNull().unique("feed_sources_url_key"),
+    topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
+    is_enabled: boolean("is_enabled").notNull().default(true),
+    last_synced_at: timestamp("last_synced_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check(
+      "feed_sources_provider_check",
+      sql`${table.provider} in ('RSS', 'GitHub', 'arXiv', 'npm', 'Custom')`,
+    ),
+    index("feed_sources_enabled_idx").on(table.is_enabled),
+  ],
+);
