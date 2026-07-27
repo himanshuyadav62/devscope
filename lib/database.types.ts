@@ -5,7 +5,14 @@ export type Resource = typeof resources.$inferSelect;
 export type NewResource = Pick<Resource, "title" | "url" | "type">;
 
 export type FeedSource = typeof feedSources.$inferSelect;
-export type NewFeedSource = Pick<
+export type NewFeedSource = Omit<Pick<
   FeedSource,
-  "name" | "provider" | "url" | "topics"
->;
+  "name" | "provider" | "url" | "topics" | "config"
+>, "config"> & { config?: FeedSource["config"] };
+
+export type SyncFeedSourceResult = {
+  source: FeedSource;
+  stories: Story[];
+  discovered: number;
+  inserted: number;
+};

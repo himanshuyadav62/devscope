@@ -3,6 +3,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -28,6 +29,10 @@ export const stories = pgTable(
     }).notNull(),
     read_minutes: integer("read_minutes"),
     accent: text("accent"),
+    metadata: jsonb("metadata")
+      .$type<Record<string, string | number | boolean | null>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     is_saved: boolean("is_saved").notNull().default(false),
     created_at: timestamp("created_at", {
       withTimezone: true,
@@ -79,7 +84,23 @@ export const feedSources = pgTable(
       .notNull(),
     url: text("url").notNull().unique("feed_sources_url_key"),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
+    config: jsonb("config")
+      .$type<{
+        mode?: "discover";
+        languages?: string[];
+        days?: number;
+        minStars?: number;
+        limit?: number;
+      }>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     is_enabled: boolean("is_enabled").notNull().default(true),
+    sync_status: text("sync_status")
+      .$type<"idle" | "running" | "success" | "failed">()
+      .notNull()
+      .default("idle"),
+    last_error: text("last_error"),
+    last_item_count: integer("last_item_count").notNull().default(0),
     last_synced_at: timestamp("last_synced_at", {
       withTimezone: true,
       mode: "string",

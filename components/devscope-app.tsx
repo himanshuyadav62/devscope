@@ -27,6 +27,7 @@ import type {
   NewResource,
   Resource,
   Story,
+  SyncFeedSourceResult,
 } from "@/lib/database.types";
 import {
   Bell,
@@ -46,9 +47,11 @@ import {
   Plus,
   PlugZap,
   Rss,
+  RefreshCw,
   Search,
   Settings,
   Sparkles,
+  Star,
   Sun,
   X,
 } from "lucide-react";
@@ -97,6 +100,7 @@ export function DevscopeApp({
   const [mobileNav, setMobileNav] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("devscope-theme");
@@ -216,6 +220,40 @@ export function DevscopeApp({
     }
   }
 
+  async function syncFeedSource(source: FeedSource) {
+    setSyncingSourceId(source.id);
+    const response = await fetch(`/api/feed-sources/${source.id}/sync`, {
+      method: "POST",
+    });
+    const result = (await response.json()) as SyncFeedSourceResult | { error: string };
+    setSyncingSourceId(null);
+
+    if (!response.ok || "error" in result) {
+      setFeedSources((current) =>
+        current.map((item) =>
+          item.id === source.id
+            ? { ...item, sync_status: "failed" as const, last_error: "error" in result ? result.error : "Sync failed." }
+            : item,
+        ),
+      );
+      setNotice("error" in result ? result.error : "The source sync failed.");
+      return;
+    }
+
+    setFeedSources((current) =>
+      current.map((item) => item.id === source.id ? result.source : item),
+    );
+    setStories((current) => {
+      const knownUrls = new Set(current.map((story) => story.source_url));
+      return [...result.stories.filter((story) => !knownUrls.has(story.source_url)), ...current];
+    });
+    setNotice(
+      result.inserted
+        ? `GitHub Radar added ${result.inserted} new ${result.inserted === 1 ? "repository" : "repositories"}.`
+        : `GitHub Radar checked ${result.discovered} repositories; your feed is already current.`,
+    );
+  }
+
   return (
     <div className="devscope-shell min-h-screen bg-[#f5f6f3] text-[#1c211f] transition-colors dark:bg-[#101513] dark:text-[#edf1ee]">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-[#dfe2dc] bg-[#fafbf8] transition-colors dark:border-[#2b3530] dark:bg-[#151b18] lg:block">
@@ -314,6 +352,8 @@ export function DevscopeApp({
             sources={feedSources}
             onAdd={() => setShowAddSource(true)}
             onToggle={toggleFeedSource}
+            onSync={syncFeedSource}
+            syncingSourceId={syncingSourceId}
           />
         ) : (
           <QueueView stories={savedStories} toggleSaved={toggleSaved} />
@@ -558,6 +598,11 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
     day: "numeric",
     timeZone: DISPLAY_TIME_ZONE,
   }).format(new Date(story.published_at));
+  const discoveryReason =
+    typeof story.metadata.discoveryReason === "string"
+      ? story.metadata.discoveryReason
+      : null;
+  const stars = typeof story.metadata.stars === "number" ? story.metadata.stars : null;
 
   return (
     <article className="group grid grid-cols-[34px_minmax(0,1fr)_36px] gap-3 border-b border-[#d8dcd6] py-5 dark:border-[#2b3530] md:grid-cols-[42px_minmax(0,1fr)_80px] md:gap-4">
@@ -572,6 +617,13 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
         </div>
         <h3 className="text-[17px] font-bold leading-6 group-hover:text-[#1e5f4d]">{story.title}</h3>
         {story.summary ? <p className="mt-2 text-sm leading-6 text-[#65706a]">{story.summary}</p> : null}
+        {discoveryReason ? (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#7a837e]">
+            <Star className="size-3.5 text-[#b7791f]" />
+            {discoveryReason}
+            {stars !== null ? <span className="sr-only">{stars} GitHub stars</span> : null}
+          </p>
+        ) : null}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {story.topics.map((item) => (
             <Badge key={item} variant="secondary">
@@ -659,10 +711,14 @@ function PluginsView({
   sources,
   onAdd,
   onToggle,
+  onSync,
+  syncingSourceId,
 }: {
   sources: FeedSource[];
   onAdd: () => void;
   onToggle: (source: FeedSource) => void;
+  onSync: (source: FeedSource) => void;
+  syncingSourceId: string | null;
 }) {
   const enabledCount = sources.filter((source) => source.is_enabled).length;
 
@@ -708,7 +764,13 @@ function PluginsView({
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-[#8a928e]">
                     <span className="truncate">{source.url}</span>
                     <span>Last sync: {lastSynced}</span>
+                    {source.sync_status === "success" ? (
+                      <span>{source.last_item_count} new last run</span>
+                    ) : null}
                   </div>
+                  {source.last_error ? (
+                    <p className="mt-2 text-xs text-red-700 dark:text-red-400">{source.last_error}</p>
+                  ) : null}
                   {source.topics.length ? (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {source.topics.map((topic) => (
@@ -728,6 +790,19 @@ function PluginsView({
                   >
                     <ExternalLink className="size-4" />
                   </a>
+                ) : null}
+                {source.provider === "GitHub" ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!source.is_enabled || syncingSourceId === source.id}
+                    onClick={() => onSync(source)}
+                  >
+                    <RefreshCw className={syncingSourceId === source.id ? "size-3.5 animate-spin" : "size-3.5"} />
+                    <span className="hidden sm:inline">
+                      {syncingSourceId === source.id ? "Running" : "Run now"}
+                    </span>
+                  </Button>
                 ) : null}
                 <Switch
                   checked={source.is_enabled}
@@ -867,13 +942,28 @@ function AddFeedSourceDialog({
       .split(",")
       .map((topic) => topic.trim())
       .filter(Boolean);
+    const languages = String(data.get("languages"))
+      .split(",")
+      .map((language) => language.trim())
+      .filter(Boolean);
 
     try {
       await onAdd({
         name: String(data.get("name")).trim(),
         provider,
-        url: String(data.get("url")).trim(),
+        url: provider === "GitHub"
+          ? `https://github.com/search?q=${encodeURIComponent(topics.join(" "))}&type=repositories`
+          : String(data.get("url")).trim(),
         topics,
+        config: provider === "GitHub"
+          ? {
+              mode: "discover",
+              languages,
+              days: Number(data.get("days")) || 30,
+              minStars: Number(data.get("minStars")) || 25,
+              limit: Number(data.get("limit")) || 12,
+            }
+          : {},
       });
       setSaving(false);
     } catch (error_) {
@@ -912,9 +1002,35 @@ function AddFeedSourceDialog({
           <label className="mt-5 block text-xs font-semibold" htmlFor="source-name">Name</label>
           <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" />
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
-          <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
+          {provider === "GitHub" ? (
+            <p className="mt-2 text-xs leading-5 text-[#737c77]">
+              GitHub Radar searches public repositories using your topics and languages.
+            </p>
+          ) : (
+            <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
+          )}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
+          {provider === "GitHub" ? (
+            <>
+              <label className="mt-4 block text-xs font-semibold" htmlFor="source-languages">Languages (optional)</label>
+              <Input id="source-languages" name="languages" className="mt-2" placeholder="TypeScript, Rust, Python" />
+              <div className="mt-4 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="source-days">Created within</label>
+                  <Input id="source-days" name="days" type="number" min="1" max="365" defaultValue="30" className="mt-2" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="source-stars">Minimum stars</label>
+                  <Input id="source-stars" name="minStars" type="number" min="0" defaultValue="25" className="mt-2" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="source-limit">Results</label>
+                  <Input id="source-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
+                </div>
+              </div>
+            </>
+          ) : null}
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

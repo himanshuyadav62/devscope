@@ -22,6 +22,7 @@ export async function POST(request: Request) {
     const topics = Array.isArray(body.topics)
       ? body.topics.map((topic) => topic.trim()).filter(Boolean).slice(0, 12)
       : [];
+    const config = body.config && typeof body.config === "object" ? body.config : {};
 
     if (!name || !provider || !providers.has(provider) || !url) {
       return NextResponse.json(
@@ -30,7 +31,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const source = await createFeedSource({ name, provider, url, topics });
+    if (provider === "GitHub" && topics.length === 0 && !config.languages?.length) {
+      return NextResponse.json(
+        { error: "GitHub Radar requires at least one topic or language." },
+        { status: 400 },
+      );
+    }
+
+    const source = await createFeedSource({ name, provider, url, topics, config });
     return NextResponse.json(source, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not add source.";

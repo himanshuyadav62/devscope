@@ -49,6 +49,72 @@ export async function setFeedSourceEnabled(
   return source;
 }
 
+export async function getFeedSource(id: string): Promise<FeedSource | null> {
+  const [source] = await getDb()
+    .select()
+    .from(feedSources)
+    .where(eq(feedSources.id, id))
+    .limit(1);
+  return source ?? null;
+}
+
+export async function setFeedSourceSyncRunning(id: string): Promise<FeedSource> {
+  const [source] = await getDb()
+    .update(feedSources)
+    .set({ sync_status: "running", last_error: null, updated_at: new Date().toISOString() })
+    .where(eq(feedSources.id, id))
+    .returning();
+
+  if (!source) throw new Error("Source not found.");
+  return source;
+}
+
+export async function completeFeedSourceSync(
+  id: string,
+  itemCount: number,
+): Promise<FeedSource> {
+  const now = new Date().toISOString();
+  const [source] = await getDb()
+    .update(feedSources)
+    .set({
+      sync_status: "success",
+      last_error: null,
+      last_item_count: itemCount,
+      last_synced_at: now,
+      updated_at: now,
+    })
+    .where(eq(feedSources.id, id))
+    .returning();
+
+  if (!source) throw new Error("Source not found.");
+  return source;
+}
+
+export async function failFeedSourceSync(
+  id: string,
+  message: string,
+): Promise<void> {
+  await getDb()
+    .update(feedSources)
+    .set({
+      sync_status: "failed",
+      last_error: message.slice(0, 500),
+      updated_at: new Date().toISOString(),
+    })
+    .where(eq(feedSources.id, id));
+}
+
+export async function insertDiscoveredStories(
+  input: Array<typeof stories.$inferInsert>,
+): Promise<Story[]> {
+  if (!input.length) return [];
+  return getDb()
+    .insert(stories)
+    .values(input)
+    .onConflictDoNothing({ target: stories.source_url })
+    .returning();
+}
+
 export async function createResource(input: NewResource): Promise<Resource> {
   const [resource] = await getDb().insert(resources).values(input).returning();
 
