@@ -80,7 +80,7 @@ export const feedSources = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     name: text("name").notNull(),
     provider: text("provider")
-      .$type<"RSS" | "GitHub" | "arXiv" | "npm" | "Custom">()
+      .$type<"RSS" | "GitHub" | "YouTube" | "arXiv" | "npm" | "Custom">()
       .notNull(),
     url: text("url").notNull().unique("feed_sources_url_key"),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
@@ -91,6 +91,7 @@ export const feedSources = pgTable(
         days?: number;
         minStars?: number;
         limit?: number;
+        channels?: string[];
       }>()
       .notNull()
       .default(sql`'{}'::jsonb`),
@@ -121,7 +122,7 @@ export const feedSources = pgTable(
   (table) => [
     check(
       "feed_sources_provider_check",
-      sql`${table.provider} in ('RSS', 'GitHub', 'arXiv', 'npm', 'Custom')`,
+      sql`${table.provider} in ('RSS', 'GitHub', 'YouTube', 'arXiv', 'npm', 'Custom')`,
     ),
     index("feed_sources_enabled_idx").on(table.is_enabled),
   ],

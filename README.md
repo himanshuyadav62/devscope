@@ -11,7 +11,8 @@ The project currently provides the application shell and database-backed workspa
 - Bookmarking: saved stories appear in the Reading queue.
 - A personal library for links, PDFs, and notes. Valid external links can be opened directly from the library.
 - A Plugins screen for configuring feed sources.
-- Database-backed source configuration for `RSS`, `GitHub`, `arXiv`, `npm`, and `Custom` providers.
+- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `arXiv`, `npm`, and `Custom` providers.
+- On-demand GitHub repository and YouTube video discovery from the Plugins screen.
 - Source enable/disable controls and topic labels.
 - Light and dark modes, with the user preference stored locally in the browser.
 - Responsive navigation, including a mobile sheet menu.
@@ -19,7 +20,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope stores and manages its feed source configuration, but scheduled ingestion is not implemented yet. Adding a source does **not** fetch its items automatically today. The next implementation phase is an ingestion worker that reads enabled sources and writes normalized items to `stories`.
+Devscope supports on-demand ingestion for GitHub Radar and YouTube Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
 
 ## Stack
 
@@ -50,6 +51,8 @@ Create `.env.local` (or use `.env`) with one of the supported connection variabl
 
 ```bash
 POSTGRES_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
+GITHUB_TOKEN=optional_github_token
+YOUTUBE_API_KEY=your_youtube_data_api_key
 ```
 
 `POSTGRES_PRISMA_URL` is also accepted by the application. Drizzle Kit additionally accepts `POSTGRES_URL_NON_POOLING` when it is available.
@@ -105,6 +108,7 @@ Database access is centralized in [lib/data.ts](lib/data.ts) and uses Drizzle. T
 | `/api/stories/:id/bookmark` | `PATCH` | Adds or removes a story from the Reading queue. |
 | `/api/feed-sources` | `POST` | Creates a source configuration. |
 | `/api/feed-sources/:id` | `PATCH` | Enables or pauses a source configuration. |
+| `/api/feed-sources/:id/sync` | `POST` | Runs a supported source and inserts deduplicated feed items. |
 
 ## Feed Source Ideas
 
@@ -112,6 +116,7 @@ These are useful initial sources to add through Plugins:
 
 - Engineering blogs and product release notes through RSS or Atom feeds.
 - GitHub release feeds for important frameworks and tools.
+- YouTube topics and selected channels through YouTube Scout.
 - arXiv query feeds for areas such as AI, systems, security, or programming languages.
 - npm package registry metadata for libraries your team depends on.
 - Hacker News, Dev.to, and technical publications that expose RSS feeds.

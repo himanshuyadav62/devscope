@@ -53,6 +53,7 @@ import {
   Sparkles,
   Star,
   Sun,
+  Video,
   X,
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -249,8 +250,8 @@ export function DevscopeApp({
     });
     setNotice(
       result.inserted
-        ? `GitHub Radar added ${result.inserted} new ${result.inserted === 1 ? "repository" : "repositories"}.`
-        : `GitHub Radar checked ${result.discovered} repositories; your feed is already current.`,
+        ? `${source.name} added ${result.inserted} new feed ${result.inserted === 1 ? "item" : "items"}.`
+        : `${source.name} checked ${result.discovered} items; your feed is already current.`,
     );
   }
 
@@ -632,7 +633,11 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
           ))}
           <span className="text-[11px] text-[#949b97]">
             {published}
-            {story.read_minutes ? ` · ${story.read_minutes} min read` : ""}
+            {story.read_minutes
+              ? story.kind === "Video"
+                ? ` · ${story.read_minutes} min video`
+                : ` · ${story.read_minutes} min read`
+              : ""}
           </span>
         </div>
       </div>
@@ -753,7 +758,11 @@ function PluginsView({
             return (
               <div key={source.id} className="flex items-center gap-3 py-5">
                 <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d] dark:bg-[#1c2521] dark:text-[#8bc5af]">
-                  {source.provider === "GitHub" ? <GitFork className="size-4" /> : <Rss className="size-4" />}
+                  {source.provider === "GitHub"
+                    ? <GitFork className="size-4" />
+                    : source.provider === "YouTube"
+                      ? <Video className="size-4" />
+                      : <Rss className="size-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -791,7 +800,7 @@ function PluginsView({
                     <ExternalLink className="size-4" />
                   </a>
                 ) : null}
-                {source.provider === "GitHub" ? (
+                {source.provider === "GitHub" || source.provider === "YouTube" ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -816,7 +825,7 @@ function PluginsView({
       ) : (
         <EmptyState
           title="No feed sources yet"
-          text="Add an RSS, GitHub, arXiv, npm, or custom source to configure your feed."
+          text="Add an RSS, GitHub, YouTube, arXiv, npm, or custom source to configure your feed."
         />
       )}
     </div>
@@ -946,14 +955,20 @@ function AddFeedSourceDialog({
       .split(",")
       .map((language) => language.trim())
       .filter(Boolean);
+    const channels = String(data.get("channels"))
+      .split(",")
+      .map((channel) => channel.trim())
+      .filter(Boolean);
 
     try {
       await onAdd({
         name: String(data.get("name")).trim(),
         provider,
         url: provider === "GitHub"
-          ? `https://github.com/search?q=${encodeURIComponent(topics.join(" "))}&type=repositories`
-          : String(data.get("url")).trim(),
+          ? `https://github.com/search?q=${encodeURIComponent([...topics, ...languages].join(" "))}&type=repositories`
+          : provider === "YouTube"
+            ? `https://www.youtube.com/results?search_query=${encodeURIComponent([...topics, ...channels].join(" "))}`
+            : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
           ? {
@@ -963,6 +978,13 @@ function AddFeedSourceDialog({
               minStars: Number(data.get("minStars")) || 25,
               limit: Number(data.get("limit")) || 12,
             }
+          : provider === "YouTube"
+            ? {
+                mode: "discover",
+                channels,
+                days: Number(data.get("days")) || 14,
+                limit: Number(data.get("limit")) || 12,
+              }
           : {},
       });
       setSaving(false);
@@ -991,9 +1013,9 @@ function AddFeedSourceDialog({
             spacing={0}
             variant="outline"
             size="sm"
-            className="grid w-full grid-cols-5"
+            className="grid w-full grid-cols-3"
           >
-            {(["RSS", "GitHub", "arXiv", "npm", "Custom"] as const).map((option) => (
+            {(["RSS", "GitHub", "YouTube", "arXiv", "npm", "Custom"] as const).map((option) => (
               <ToggleGroupItem type="button" key={option} value={option} className="w-full text-xs">
                 {option}
               </ToggleGroupItem>
@@ -1005,6 +1027,10 @@ function AddFeedSourceDialog({
           {provider === "GitHub" ? (
             <p className="mt-2 text-xs leading-5 text-[#737c77]">
               GitHub Radar searches public repositories using your topics and languages.
+            </p>
+          ) : provider === "YouTube" ? (
+            <p className="mt-2 text-xs leading-5 text-[#737c77]">
+              YouTube Scout finds recent videos by topic, selected channels, or both.
             </p>
           ) : (
             <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
@@ -1027,6 +1053,29 @@ function AddFeedSourceDialog({
                 <div>
                   <label className="block text-xs font-semibold" htmlFor="source-limit">Results</label>
                   <Input id="source-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
+                </div>
+              </div>
+            </>
+          ) : provider === "YouTube" ? (
+            <>
+              <label className="mt-4 block text-xs font-semibold" htmlFor="source-channels">Channels (optional)</label>
+              <Input
+                id="source-channels"
+                name="channels"
+                className="mt-2"
+                placeholder="@Fireship, @Computerphile, UC channel ID"
+              />
+              <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">
+                Separate channels with commas. You can use @handles, channel URLs, or UC channel IDs.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="youtube-days">Published within</label>
+                  <Input id="youtube-days" name="days" type="number" min="1" max="90" defaultValue="14" className="mt-2" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="youtube-limit">Results</label>
+                  <Input id="youtube-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
                 </div>
               </div>
             </>

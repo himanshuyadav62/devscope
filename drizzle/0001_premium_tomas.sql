@@ -1,0 +1,2 @@
+ALTER TABLE "feed_sources" DROP CONSTRAINT "feed_sources_provider_check";--> statement-breakpoint
+ALTER TABLE "feed_sources" ADD CONSTRAINT "feed_sources_provider_check" CHECK ("feed_sources"."provider" in ('RSS', 'GitHub', 'YouTube', 'arXiv', 'npm', 'Custom'));

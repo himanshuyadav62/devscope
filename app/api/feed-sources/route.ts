@@ -2,7 +2,7 @@ import { createFeedSource } from "@/lib/data";
 import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 
-const providers = new Set(["RSS", "GitHub", "arXiv", "npm", "Custom"]);
+const providers = new Set(["RSS", "GitHub", "YouTube", "arXiv", "npm", "Custom"]);
 
 function getHttpUrl(value: string) {
   try {
@@ -34,6 +34,13 @@ export async function POST(request: Request) {
     if (provider === "GitHub" && topics.length === 0 && !config.languages?.length) {
       return NextResponse.json(
         { error: "GitHub Radar requires at least one topic or language." },
+        { status: 400 },
+      );
+    }
+
+    if (provider === "YouTube" && topics.length === 0 && !config.channels?.length) {
+      return NextResponse.json(
+        { error: "YouTube Scout requires at least one topic or channel." },
         { status: 400 },
       );
     }
