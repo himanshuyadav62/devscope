@@ -1,6 +1,7 @@
 import { createFeedSource } from "@/lib/data";
 import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
 
 const providers = new Set(["RSS", "GitHub", "YouTube", "arXiv", "npm", "Custom"]);
 
@@ -15,6 +16,7 @@ function getHttpUrl(value: string) {
 
 export async function POST(request: Request) {
   try {
+    const user = await requireUser();
     const body = (await request.json()) as Partial<NewFeedSource>;
     const name = body.name?.trim();
     const provider = body.provider;
@@ -45,7 +47,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const source = await createFeedSource({ name, provider, url, topics, config });
+    const source = await createFeedSource(user.id, { name, provider, url, topics, config });
     return NextResponse.json(source, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not add source.";

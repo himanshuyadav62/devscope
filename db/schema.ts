@@ -7,6 +7,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -15,11 +16,10 @@ export const stories = pgTable(
   "stories",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id"),
     kind: text("kind").notNull(),
     source: text("source").notNull(),
-    source_url: text("source_url")
-      .notNull()
-      .unique("stories_source_url_key"),
+    source_url: text("source_url").notNull(),
     title: text("title").notNull(),
     summary: text("summary").notNull().default(""),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
@@ -52,6 +52,11 @@ export const stories = pgTable(
       table.published_at.desc().nullsFirst(),
     ),
     index("stories_topics_idx").using("gin", table.topics),
+    index("stories_user_id_idx").on(table.user_id),
+    uniqueIndex("stories_user_source_url_key").on(
+      table.user_id,
+      table.source_url,
+    ),
   ],
 );
 
@@ -59,6 +64,7 @@ export const resources = pgTable(
   "resources",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id"),
     title: text("title").notNull(),
     url: text("url"),
     type: text("type").$type<"Link" | "PDF" | "Note">().notNull(),
@@ -71,6 +77,7 @@ export const resources = pgTable(
   },
   (table) => [
     check("resources_type_check", sql`${table.type} in ('Link', 'PDF', 'Note')`),
+    index("resources_user_id_idx").on(table.user_id),
   ],
 );
 
@@ -78,11 +85,12 @@ export const feedSources = pgTable(
   "feed_sources",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id"),
     name: text("name").notNull(),
     provider: text("provider")
       .$type<"RSS" | "GitHub" | "YouTube" | "arXiv" | "npm" | "Custom">()
       .notNull(),
-    url: text("url").notNull().unique("feed_sources_url_key"),
+    url: text("url").notNull(),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
     config: jsonb("config")
       .$type<{
@@ -125,5 +133,7 @@ export const feedSources = pgTable(
       sql`${table.provider} in ('RSS', 'GitHub', 'YouTube', 'arXiv', 'npm', 'Custom')`,
     ),
     index("feed_sources_enabled_idx").on(table.is_enabled),
+    index("feed_sources_user_id_idx").on(table.user_id),
+    uniqueIndex("feed_sources_user_url_key").on(table.user_id, table.url),
   ],
 );

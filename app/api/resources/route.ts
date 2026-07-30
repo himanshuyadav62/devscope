@@ -1,11 +1,13 @@
 import { createResource } from "@/lib/data";
 import type { NewResource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
 
 const resourceTypes = new Set(["Link", "PDF", "Note"]);
 
 export async function POST(request: Request) {
   try {
+    const user = await requireUser();
     const body = (await request.json()) as Partial<NewResource>;
     const title = body.title?.trim();
     const type = body.type;
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const resource = await createResource({ title, type, url });
+    const resource = await createResource(user.id, { title, type, url });
     return NextResponse.json(resource, { status: 201 });
   } catch (error) {
     const message =

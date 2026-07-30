@@ -1,11 +1,13 @@
 import { setStorySaved } from "@/lib/data";
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/auth";
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
+    const user = await requireUser();
     const { id } = await params;
     const body = (await request.json()) as { isSaved?: unknown };
 
@@ -16,7 +18,7 @@ export async function PATCH(
       );
     }
 
-    const story = await setStorySaved(id, body.isSaved);
+    const story = await setStorySaved(user.id, id, body.isSaved);
     return NextResponse.json(story);
   } catch (error) {
     const message =

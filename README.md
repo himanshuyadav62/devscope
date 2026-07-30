@@ -13,6 +13,8 @@ The project currently provides the application shell and database-backed workspa
 - A Plugins screen for configuring feed sources.
 - Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `arXiv`, `npm`, and `Custom` providers.
 - On-demand GitHub repository and YouTube video discovery from the Plugins screen.
+- Google sign-in through Supabase Auth with cookie-based SSR sessions.
+- Per-user feed sources, stories, bookmarks, and library records protected by RLS.
 - Source enable/disable controls and topic labels.
 - Light and dark modes, with the user preference stored locally in the browser.
 - Responsive navigation, including a mobile sheet menu.
@@ -51,6 +53,8 @@ Create `.env.local` (or use `.env`) with one of the supported connection variabl
 
 ```bash
 POSTGRES_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?sslmode=require
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 GITHUB_TOKEN=optional_github_token
 YOUTUBE_API_KEY=your_youtube_data_api_key
 ```
@@ -58,6 +62,18 @@ YOUTUBE_API_KEY=your_youtube_data_api_key
 `POSTGRES_PRISMA_URL` is also accepted by the application. Drizzle Kit additionally accepts `POSTGRES_URL_NON_POOLING` when it is available.
 
 Never commit database credentials. The repository ignores environment files.
+
+### Configure Google sign-in
+
+1. Enable Google in Supabase Dashboard → Authentication → Providers.
+2. Add the Supabase callback URL to the Google OAuth client:
+   `https://tvcihucgxjazljejsejx.supabase.co/auth/v1/callback`
+3. In Supabase Authentication → URL Configuration, set the production Site URL
+   and allow `http://localhost:3000/auth/callback` for local development.
+4. Restart the Next.js server after changing environment variables.
+
+Rows created before user ownership was introduced remain ownerless and are
+hidden. New rows belong to the signed-in user.
 
 ### Apply the schema
 

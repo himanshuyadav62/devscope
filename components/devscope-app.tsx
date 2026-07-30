@@ -84,11 +84,17 @@ export function DevscopeApp({
   initialResources,
   initialFeedSources,
   renderedAt,
+  user,
 }: Readonly<{
   initialStories: Story[];
   initialResources: Resource[];
   initialFeedSources: FeedSource[];
   renderedAt: string;
+  user: {
+    email: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+  };
 }>) {
   const [view, setView] = useState("today");
   const [topic, setTopic] = useState("All");
@@ -264,6 +270,7 @@ export function DevscopeApp({
           topics={topics}
           setTopic={setTopic}
           savedStoriesCount={savedStories.length}
+          user={user}
         />
       </aside>
 
@@ -279,6 +286,7 @@ export function DevscopeApp({
             topics={topics}
             setTopic={setTopic}
             savedStoriesCount={savedStories.length}
+            user={user}
             onNavigate={() => setMobileNav(false)}
           />
         </SheetContent>
@@ -377,6 +385,7 @@ function SidebarContent({
   topics,
   setTopic,
   savedStoriesCount,
+  user,
   onNavigate,
 }: {
   view: string;
@@ -384,6 +393,11 @@ function SidebarContent({
   topics: string[];
   setTopic: (topic: string) => void;
   savedStoriesCount: number;
+  user: {
+    email: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+  };
   onNavigate?: () => void;
 }) {
   function navigate(nextView: string) {
@@ -450,14 +464,25 @@ function SidebarContent({
 
       <div className="mt-auto pt-4">
         <Separator className="mb-4" />
-        <Button variant="ghost" className="h-9 w-full justify-start gap-3 px-3">
-          <Settings className="size-4" />
-          Settings
-        </Button>
-        <div className="mt-3 flex items-center gap-3 px-3 text-xs text-[#77807b]">
-          <Database className="size-4 text-[#1e5f4d]" />
-          Supabase connected
+        <div className="flex items-center gap-3 px-3">
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#dce8e2] text-xs font-bold text-[#1e5f4d]">
+            {(user.name ?? user.email ?? "U").slice(0, 1).toUpperCase()}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{user.name ?? "Signed in"}</p>
+            <p className="truncate text-[11px] text-[#77807b]">{user.email}</p>
+          </div>
         </div>
+        <form action="/auth/signout" method="post" className="mt-3">
+          <Button type="submit" variant="ghost" className="h-9 w-full justify-start gap-3 px-3">
+            <Settings className="size-4" />
+            Sign out
+          </Button>
+        </form>
+        <p className="mt-2 flex items-center gap-2 px-3 text-[11px] text-[#77807b]">
+          <Database className="size-3.5 text-[#1e5f4d]" />
+          Private Supabase workspace
+        </p>
       </div>
     </div>
   );
