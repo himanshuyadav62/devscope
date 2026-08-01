@@ -800,6 +800,8 @@ function PluginsView({
                       ? <Video className="size-4" />
                       : source.provider === "Hugging Face"
                         ? <Sparkles className="size-4" />
+                        : source.provider === "Hacker News"
+                          ? <Newspaper className="size-4" />
                         : <Rss className="size-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
@@ -850,7 +852,7 @@ function PluginsView({
                     <ExternalLink className="size-4" />
                   </a>
                 ) : null}
-                {source.provider === "GitHub" || source.provider === "YouTube" || source.provider === "Hugging Face" ? (
+                {source.provider === "GitHub" || source.provider === "YouTube" || source.provider === "Hugging Face" || source.provider === "Hacker News" ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -875,7 +877,7 @@ function PluginsView({
       ) : (
         <EmptyState
           title="No feed sources yet"
-          text="Add an RSS, GitHub, YouTube, Hugging Face, arXiv, npm, or custom source to configure your feed."
+          text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, arXiv, npm, or custom source to configure your feed."
         />
       )}
     </div>
@@ -1008,10 +1010,13 @@ function AddFeedSourceDialog({
     const author = String(data.get("author") ?? "").trim();
     const hubType = String(data.get("hubType") ?? "all") as NonNullable<FeedSource["config"]>["hubType"];
     const sort = String(data.get("sort") ?? "trendingScore") as NonNullable<FeedSource["config"]>["sort"];
+    const hnFeed = String(data.get("hnFeed") ?? "top") as NonNullable<FeedSource["config"]>["hnFeed"];
+    const includeDiscussions = data.get("includeDiscussions") === "on";
     const huggingFaceQuery = encodeURIComponent([...topics, ...tags, author].filter(Boolean).join(" "));
     const huggingFaceUrl = hubType === "all"
       ? `https://huggingface.co/search/full-text?q=${huggingFaceQuery}`
       : `https://huggingface.co/${hubType}?search=${huggingFaceQuery}`;
+    const hackerNewsUrl = `https://news.ycombinator.com/${hnFeed === "new" ? "newest" : hnFeed === "show" ? "show" : hnFeed === "ask" ? "ask" : hnFeed === "jobs" ? "jobs" : "news"}`;
 
     try {
       await onAdd({
@@ -1023,6 +1028,8 @@ function AddFeedSourceDialog({
             ? `https://www.youtube.com/results?search_query=${encodeURIComponent([...topics, ...channels].join(" "))}`
             : provider === "Hugging Face"
               ? huggingFaceUrl
+              : provider === "Hacker News"
+                ? hackerNewsUrl
             : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
@@ -1048,6 +1055,14 @@ function AddFeedSourceDialog({
                 author,
                 tags,
                 limit: Number(data.get("limit")) || 12,
+              }
+          : provider === "Hacker News"
+            ? {
+                mode: "discover",
+                hnFeed,
+                minScore: Number(data.get("minScore")) || 0,
+                includeDiscussions,
+                limit: Number(data.get("limit")) || 15,
               }
           : {},
       });
@@ -1079,7 +1094,7 @@ function AddFeedSourceDialog({
             size="sm"
             className="grid w-full grid-cols-3"
           >
-            {(["RSS", "GitHub", "YouTube", "Hugging Face", "arXiv", "npm", "Custom"] as const).map((option) => (
+            {(["RSS", "GitHub", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"] as const).map((option) => (
               <ToggleGroupItem type="button" key={option} value={option} className="w-full text-xs">
                 {option}
               </ToggleGroupItem>
@@ -1099,6 +1114,10 @@ function AddFeedSourceDialog({
           ) : provider === "Hugging Face" ? (
             <p className="mt-2 text-xs leading-5 text-[#737c77]">
               Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.
+            </p>
+          ) : provider === "Hacker News" ? (
+            <p className="mt-2 text-xs leading-5 text-[#737c77]">
+              Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.
             </p>
           ) : (
             <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
@@ -1188,6 +1207,47 @@ function AddFeedSourceDialog({
                   <label className="block text-xs font-semibold" htmlFor="hf-limit">Results</label>
                   <Input id="hf-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
                 </div>
+              </div>
+            </>
+          ) : provider === "Hacker News" ? (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hn-feed">Feed</label>
+                  <select
+                    id="hn-feed"
+                    name="hnFeed"
+                    defaultValue="top"
+                    className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <option value="top">Top</option>
+                    <option value="best">Best</option>
+                    <option value="new">New</option>
+                    <option value="show">Show HN</option>
+                    <option value="ask">Ask HN</option>
+                    <option value="jobs">Jobs</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hn-score">Minimum score</label>
+                  <Input id="hn-score" name="minScore" type="number" min="0" defaultValue="10" className="mt-2" />
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hn-limit">Results</label>
+                  <Input id="hn-limit" name="limit" type="number" min="1" max="30" defaultValue="15" className="mt-2" />
+                </div>
+                <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="hn-discussions">
+                  <input
+                    id="hn-discussions"
+                    name="includeDiscussions"
+                    type="checkbox"
+                    defaultChecked
+                    className="size-4 accent-[#1e5f4d]"
+                  />
+                  Include discussion posts
+                </label>
               </div>
             </>
           ) : null}

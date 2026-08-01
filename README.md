@@ -11,8 +11,8 @@ The project currently provides the application shell and database-backed workspa
 - Bookmarking: saved stories appear in the Reading queue.
 - A personal library for links, PDFs, and notes. Valid external links can be opened directly from the library.
 - A Plugins screen for configuring feed sources.
-- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `Hugging Face`, `arXiv`, `npm`, and `Custom` providers.
-- On-demand GitHub repository, YouTube video, and Hugging Face Hub discovery from the Plugins screen.
+- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `Hugging Face`, `Hacker News`, `arXiv`, `npm`, and `Custom` providers.
+- On-demand GitHub repository, YouTube video, Hugging Face Hub, and Hacker News discovery from the Plugins screen.
 - Google sign-in through Supabase Auth with cookie-based SSR sessions.
 - Per-user feed sources, stories, bookmarks, and library records protected by RLS.
 - Source enable/disable controls and topic labels.
@@ -22,7 +22,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope supports on-demand ingestion for GitHub Radar, YouTube Scout, and Hugging Face Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
+Devscope supports on-demand ingestion for GitHub Radar, YouTube Scout, Hugging Face Scout, and Hacker News Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
 
 ## Stack
 
@@ -135,6 +135,7 @@ These are useful initial sources to add through Plugins:
 - GitHub release feeds for important frameworks and tools.
 - YouTube topics and selected channels through YouTube Scout.
 - Hugging Face models, datasets, and Spaces by topic, tag, author, or organization.
+- Hacker News top, best, new, Show HN, Ask HN, and jobs feeds.
 - arXiv query feeds for areas such as AI, systems, security, or programming languages.
 - npm package registry metadata for libraries your team depends on.
 - Hacker News, Dev.to, and technical publications that expose RSS feeds.

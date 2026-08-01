@@ -3,7 +3,7 @@ import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
-const providers = new Set(["RSS", "GitHub", "YouTube", "Hugging Face", "arXiv", "npm", "Custom"]);
+const providers = new Set(["RSS", "GitHub", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"]);
 
 function getHttpUrl(value: string) {
   try {
