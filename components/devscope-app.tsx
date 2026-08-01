@@ -619,6 +619,7 @@ function TodayView({
 
 function StoryRow({ story, index, onSave }: { story: Story; index: number; onSave: () => void }) {
   const KindIcon = story.kind === "Paper" ? FileText : story.kind === "Repository" ? GitFork : story.kind === "Release" ? Sparkles : Newspaper;
+  const href = getExternalHref(story.source_url);
   const published = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     month: "short",
     day: "numeric",
@@ -641,7 +642,15 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
           <span className="text-[#a0a6a2]">/</span>
           <span className="font-semibold uppercase text-[#7d8581]">{story.kind}</span>
         </div>
-        <h3 className="text-[17px] font-bold leading-6 group-hover:text-[#1e5f4d]">{story.title}</h3>
+        <h3 className="text-[17px] font-bold leading-6">
+          {href ? (
+            <a href={href} target="_blank" rel="noreferrer" className="hover:text-[#1e5f4d] dark:hover:text-[#8bc5af]">
+              {story.title}
+            </a>
+          ) : (
+            story.title
+          )}
+        </h3>
         {story.summary ? <p className="mt-2 text-sm leading-6 text-[#65706a]">{story.summary}</p> : null}
         {discoveryReason ? (
           <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#7a837e]">
@@ -670,9 +679,11 @@ function StoryRow({ story, index, onSave }: { story: Story; index: number; onSav
         <Button variant="ghost" size="icon-xs" onClick={onSave} aria-label={story.is_saved ? "Remove bookmark" : "Bookmark story"}>
           {story.is_saved ? <BookmarkCheck className="size-4 text-[#1e5f4d]" /> : <Bookmark className="size-4" />}
         </Button>
-        <a href={story.source_url} target="_blank" rel="noreferrer" className="hidden size-8 place-items-center text-[#747d78] md:grid" aria-label="Open story">
-          <ExternalLink className="size-4" />
-        </a>
+        {href ? (
+          <a href={href} target="_blank" rel="noreferrer" className="hidden size-8 place-items-center text-[#747d78] md:grid" aria-label="Open story">
+            <ExternalLink className="size-4" />
+          </a>
+        ) : null}
       </div>
     </article>
   );
@@ -793,7 +804,19 @@ function PluginsView({
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="truncate text-sm font-semibold">{source.name}</p>
+                    {href ? (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block truncate text-sm font-semibold hover:text-[#1e5f4d] dark:hover:text-[#8bc5af]"
+                        title={`Open ${source.name}`}
+                      >
+                        {source.name}
+                      </a>
+                    ) : (
+                      <p className="truncate text-sm font-semibold">{source.name}</p>
+                    )}
                     <Badge variant="secondary">{source.provider}</Badge>
                     {!source.is_enabled ? <Badge variant="outline">Paused</Badge> : null}
                   </div>
@@ -1037,7 +1060,7 @@ function AddFeedSourceDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Add feed source</DialogTitle>
           <DialogDescription>
