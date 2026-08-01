@@ -11,8 +11,8 @@ The project currently provides the application shell and database-backed workspa
 - Bookmarking: saved stories appear in the Reading queue.
 - A personal library for links, PDFs, and notes. Valid external links can be opened directly from the library.
 - A Plugins screen for configuring feed sources.
-- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `arXiv`, `npm`, and `Custom` providers.
-- On-demand GitHub repository and YouTube video discovery from the Plugins screen.
+- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `Hugging Face`, `arXiv`, `npm`, and `Custom` providers.
+- On-demand GitHub repository, YouTube video, and Hugging Face Hub discovery from the Plugins screen.
 - Google sign-in through Supabase Auth with cookie-based SSR sessions.
 - Per-user feed sources, stories, bookmarks, and library records protected by RLS.
 - Source enable/disable controls and topic labels.
@@ -22,7 +22,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope supports on-demand ingestion for GitHub Radar and YouTube Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
+Devscope supports on-demand ingestion for GitHub Radar, YouTube Scout, and Hugging Face Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
 
 ## Stack
 
@@ -57,6 +57,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 GITHUB_TOKEN=optional_github_token
 YOUTUBE_API_KEY=your_youtube_data_api_key
+HUGGINGFACE_TOKEN=optional_huggingface_token
 ```
 
 `POSTGRES_PRISMA_URL` is also accepted by the application. Drizzle Kit additionally accepts `POSTGRES_URL_NON_POOLING` when it is available.
@@ -133,6 +134,7 @@ These are useful initial sources to add through Plugins:
 - Engineering blogs and product release notes through RSS or Atom feeds.
 - GitHub release feeds for important frameworks and tools.
 - YouTube topics and selected channels through YouTube Scout.
+- Hugging Face models, datasets, and Spaces by topic, tag, author, or organization.
 - arXiv query feeds for areas such as AI, systems, security, or programming languages.
 - npm package registry metadata for libraries your team depends on.
 - Hacker News, Dev.to, and technical publications that expose RSS feeds.

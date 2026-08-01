@@ -787,7 +787,9 @@ function PluginsView({
                     ? <GitFork className="size-4" />
                     : source.provider === "YouTube"
                       ? <Video className="size-4" />
-                      : <Rss className="size-4" />}
+                      : source.provider === "Hugging Face"
+                        ? <Sparkles className="size-4" />
+                        : <Rss className="size-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -825,7 +827,7 @@ function PluginsView({
                     <ExternalLink className="size-4" />
                   </a>
                 ) : null}
-                {source.provider === "GitHub" || source.provider === "YouTube" ? (
+                {source.provider === "GitHub" || source.provider === "YouTube" || source.provider === "Hugging Face" ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -850,7 +852,7 @@ function PluginsView({
       ) : (
         <EmptyState
           title="No feed sources yet"
-          text="Add an RSS, GitHub, YouTube, arXiv, npm, or custom source to configure your feed."
+          text="Add an RSS, GitHub, YouTube, Hugging Face, arXiv, npm, or custom source to configure your feed."
         />
       )}
     </div>
@@ -972,18 +974,21 @@ function AddFeedSourceDialog({
     setSaving(true);
     setError(null);
     const data = new FormData(event.currentTarget);
-    const topics = String(data.get("topics"))
+    const csv = (name: string) => String(data.get(name) ?? "")
       .split(",")
-      .map((topic) => topic.trim())
+      .map((item) => item.trim())
       .filter(Boolean);
-    const languages = String(data.get("languages"))
-      .split(",")
-      .map((language) => language.trim())
-      .filter(Boolean);
-    const channels = String(data.get("channels"))
-      .split(",")
-      .map((channel) => channel.trim())
-      .filter(Boolean);
+    const topics = csv("topics");
+    const languages = csv("languages");
+    const channels = csv("channels");
+    const tags = csv("tags");
+    const author = String(data.get("author") ?? "").trim();
+    const hubType = String(data.get("hubType") ?? "all") as NonNullable<FeedSource["config"]>["hubType"];
+    const sort = String(data.get("sort") ?? "trendingScore") as NonNullable<FeedSource["config"]>["sort"];
+    const huggingFaceQuery = encodeURIComponent([...topics, ...tags, author].filter(Boolean).join(" "));
+    const huggingFaceUrl = hubType === "all"
+      ? `https://huggingface.co/search/full-text?q=${huggingFaceQuery}`
+      : `https://huggingface.co/${hubType}?search=${huggingFaceQuery}`;
 
     try {
       await onAdd({
@@ -993,6 +998,8 @@ function AddFeedSourceDialog({
           ? `https://github.com/search?q=${encodeURIComponent([...topics, ...languages].join(" "))}&type=repositories`
           : provider === "YouTube"
             ? `https://www.youtube.com/results?search_query=${encodeURIComponent([...topics, ...channels].join(" "))}`
+            : provider === "Hugging Face"
+              ? huggingFaceUrl
             : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
@@ -1008,6 +1015,15 @@ function AddFeedSourceDialog({
                 mode: "discover",
                 channels,
                 days: Number(data.get("days")) || 14,
+                limit: Number(data.get("limit")) || 12,
+              }
+          : provider === "Hugging Face"
+            ? {
+                mode: "discover",
+                hubType,
+                sort,
+                author,
+                tags,
                 limit: Number(data.get("limit")) || 12,
               }
           : {},
@@ -1040,7 +1056,7 @@ function AddFeedSourceDialog({
             size="sm"
             className="grid w-full grid-cols-3"
           >
-            {(["RSS", "GitHub", "YouTube", "arXiv", "npm", "Custom"] as const).map((option) => (
+            {(["RSS", "GitHub", "YouTube", "Hugging Face", "arXiv", "npm", "Custom"] as const).map((option) => (
               <ToggleGroupItem type="button" key={option} value={option} className="w-full text-xs">
                 {option}
               </ToggleGroupItem>
@@ -1056,6 +1072,10 @@ function AddFeedSourceDialog({
           ) : provider === "YouTube" ? (
             <p className="mt-2 text-xs leading-5 text-[#737c77]">
               YouTube Scout finds recent videos by topic, selected channels, or both.
+            </p>
+          ) : provider === "Hugging Face" ? (
+            <p className="mt-2 text-xs leading-5 text-[#737c77]">
+              Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.
             </p>
           ) : (
             <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />
@@ -1101,6 +1121,49 @@ function AddFeedSourceDialog({
                 <div>
                   <label className="block text-xs font-semibold" htmlFor="youtube-limit">Results</label>
                   <Input id="youtube-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
+                </div>
+              </div>
+            </>
+          ) : provider === "Hugging Face" ? (
+            <>
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hf-type">Hub type</label>
+                  <select
+                    id="hf-type"
+                    name="hubType"
+                    defaultValue="all"
+                    className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <option value="all">All</option>
+                    <option value="models">Models</option>
+                    <option value="datasets">Datasets</option>
+                    <option value="spaces">Spaces</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hf-sort">Sort</label>
+                  <select
+                    id="hf-sort"
+                    name="sort"
+                    defaultValue="trendingScore"
+                    className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  >
+                    <option value="trendingScore">Trending</option>
+                    <option value="downloads">Downloads</option>
+                    <option value="likes">Likes</option>
+                    <option value="lastModified">Recently updated</option>
+                  </select>
+                </div>
+              </div>
+              <label className="mt-4 block text-xs font-semibold" htmlFor="hf-tags">Tags (optional)</label>
+              <Input id="hf-tags" name="tags" className="mt-2" placeholder="text-generation, gradio, pytorch" />
+              <label className="mt-4 block text-xs font-semibold" htmlFor="hf-author">Author or org (optional)</label>
+              <Input id="hf-author" name="author" className="mt-2" placeholder="openai, google, Qwen" />
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold" htmlFor="hf-limit">Results</label>
+                  <Input id="hf-limit" name="limit" type="number" min="1" max="30" defaultValue="12" className="mt-2" />
                 </div>
               </div>
             </>
