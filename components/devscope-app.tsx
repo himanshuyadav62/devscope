@@ -67,6 +67,16 @@ const navItems = [
 
 const DISPLAY_LOCALE = "en-US";
 const DISPLAY_TIME_ZONE = "Asia/Kolkata";
+const runnableProviders = new Set<FeedSource["provider"]>([
+  "GitHub",
+  "YouTube",
+  "Hugging Face",
+  "Hacker News",
+]);
+
+function canRunSource(source: FeedSource) {
+  return source.is_enabled && runnableProviders.has(source.provider);
+}
 
 function getExternalHref(url: string | null) {
   if (!url) return null;
@@ -108,6 +118,7 @@ export function DevscopeApp({
   const [notice, setNotice] = useState<string | null>(null);
   const [darkMode, setDarkMode] = useState(false);
   const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
+  const [syncingAllSources, setSyncingAllSources] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("devscope-theme");
@@ -227,37 +238,88 @@ export function DevscopeApp({
     }
   }
 
-  async function syncFeedSource(source: FeedSource) {
-    setSyncingSourceId(source.id);
-    const response = await fetch(`/api/feed-sources/${source.id}/sync`, {
-      method: "POST",
-    });
-    const result = (await response.json()) as SyncFeedSourceResult | { error: string };
-    setSyncingSourceId(null);
+  async function runFeedSourceSync(source: FeedSource) {
+    try {
+      setSyncingSourceId(source.id);
+      const response = await fetch(`/api/feed-sources/${source.id}/sync`, {
+        method: "POST",
+      });
+      const result = (await response.json()) as SyncFeedSourceResult | { error: string };
 
-    if (!response.ok || "error" in result) {
+      if (!response.ok || "error" in result) {
+        setFeedSources((current) =>
+          current.map((item) =>
+            item.id === source.id
+              ? { ...item, sync_status: "failed" as const, last_error: "error" in result ? result.error : "Sync failed." }
+              : item,
+          ),
+        );
+        setNotice("error" in result ? result.error : "The source sync failed.");
+        return null;
+      }
+
+      setFeedSources((current) =>
+        current.map((item) => item.id === source.id ? result.source : item),
+      );
+      setStories((current) => {
+        const knownUrls = new Set(current.map((story) => story.source_url));
+        return [...result.stories.filter((story) => !knownUrls.has(story.source_url)), ...current];
+      });
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "The source sync failed.";
       setFeedSources((current) =>
         current.map((item) =>
           item.id === source.id
-            ? { ...item, sync_status: "failed" as const, last_error: "error" in result ? result.error : "Sync failed." }
+            ? { ...item, sync_status: "failed" as const, last_error: message }
             : item,
         ),
       );
-      setNotice("error" in result ? result.error : "The source sync failed.");
-      return;
+      setNotice(message);
+      return null;
+    } finally {
+      setSyncingSourceId(null);
     }
+  }
 
-    setFeedSources((current) =>
-      current.map((item) => item.id === source.id ? result.source : item),
-    );
-    setStories((current) => {
-      const knownUrls = new Set(current.map((story) => story.source_url));
-      return [...result.stories.filter((story) => !knownUrls.has(story.source_url)), ...current];
-    });
+  async function syncFeedSource(source: FeedSource) {
+    const result = await runFeedSourceSync(source);
+    if (!result) return;
+
     setNotice(
       result.inserted
         ? `${source.name} added ${result.inserted} new feed ${result.inserted === 1 ? "item" : "items"}.`
         : `${source.name} checked ${result.discovered} items; your feed is already current.`,
+    );
+  }
+
+  async function syncActiveFeedSources() {
+    const sourcesToSync = feedSources.filter(canRunSource);
+    if (!sourcesToSync.length) {
+      setNotice("No active runnable sources to sync.");
+      return;
+    }
+
+    setSyncingAllSources(true);
+    let inserted = 0;
+    let discovered = 0;
+    let failed = 0;
+
+    for (const source of sourcesToSync) {
+      const result = await runFeedSourceSync(source);
+      if (result) {
+        inserted += result.inserted;
+        discovered += result.discovered;
+      } else {
+        failed += 1;
+      }
+    }
+
+    setSyncingAllSources(false);
+    setNotice(
+      failed
+        ? `Synced ${sourcesToSync.length - failed} sources; ${failed} failed. Added ${inserted} new feed ${inserted === 1 ? "item" : "items"}.`
+        : `Synced ${sourcesToSync.length} active sources. Added ${inserted} new feed ${inserted === 1 ? "item" : "items"} from ${discovered} discovered.`,
     );
   }
 
@@ -362,7 +424,9 @@ export function DevscopeApp({
             onAdd={() => setShowAddSource(true)}
             onToggle={toggleFeedSource}
             onSync={syncFeedSource}
+            onSyncAll={syncActiveFeedSources}
             syncingSourceId={syncingSourceId}
+            syncingAllSources={syncingAllSources}
           />
         ) : (
           <QueueView stories={savedStories} toggleSaved={toggleSaved} />
@@ -753,15 +817,20 @@ function PluginsView({
   onAdd,
   onToggle,
   onSync,
+  onSyncAll,
   syncingSourceId,
+  syncingAllSources,
 }: {
   sources: FeedSource[];
   onAdd: () => void;
   onToggle: (source: FeedSource) => void;
   onSync: (source: FeedSource) => void;
+  onSyncAll: () => void;
   syncingSourceId: string | null;
+  syncingAllSources: boolean;
 }) {
   const enabledCount = sources.filter((source) => source.is_enabled).length;
+  const runnableCount = sources.filter(canRunSource).length;
 
   return (
     <div className="mx-auto max-w-262.5 px-4 py-8 md:px-8 md:py-10">
@@ -773,10 +842,21 @@ function PluginsView({
             {enabledCount} of {sources.length} source{sources.length === 1 ? "" : "s"} enabled.
           </p>
         </div>
-        <Button onClick={onAdd} size="sm">
-          <Plus className="size-4" />
-          Add source
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={onSyncAll}
+            size="sm"
+            variant="outline"
+            disabled={!runnableCount || syncingAllSources || Boolean(syncingSourceId)}
+          >
+            <RefreshCw className={syncingAllSources ? "size-4 animate-spin" : "size-4"} />
+            {syncingAllSources ? "Running active" : "Run active"}
+          </Button>
+          <Button onClick={onAdd} size="sm">
+            <Plus className="size-4" />
+            Add source
+          </Button>
+        </div>
       </div>
 
       {sources.length ? (
@@ -856,7 +936,7 @@ function PluginsView({
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={!source.is_enabled || syncingSourceId === source.id}
+                    disabled={!source.is_enabled || syncingAllSources || Boolean(syncingSourceId)}
                     onClick={() => onSync(source)}
                   >
                     <RefreshCw className={syncingSourceId === source.id ? "size-3.5 animate-spin" : "size-3.5"} />
