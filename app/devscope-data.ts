@@ -1,0 +1,22 @@
+import { getCurrentUser } from "@/lib/auth";
+import { getStories } from "@/lib/data";
+import { redirect } from "next/navigation";
+
+export async function requireDevscopeUser() {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  return user;
+}
+
+export function getStoryTopics(stories: Array<{ topics: string[] }>) {
+  return Array.from(new Set(stories.flatMap((story) => story.topics))).sort((a, b) => a.localeCompare(b));
+}
+
+export async function getShellData(userId: string) {
+  const stories = await getStories(userId);
+  return {
+    stories,
+    topics: getStoryTopics(stories),
+    savedStoriesCount: stories.filter((story) => story.is_saved).length,
+  };
+}

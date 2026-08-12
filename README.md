@@ -121,6 +121,9 @@ Database access is centralized in [lib/data.ts](lib/data.ts) and uses Drizzle. T
 | Route | Method | Behavior |
 | --- | --- | --- |
 | `/` | `GET` | Loads database-backed stories, personal resources, and feed sources. |
+| `/library` | `GET` | Opens the personal library view. |
+| `/inbox` | `GET` | Opens the saved stories / Reading queue view. |
+| `/plugins` | `GET` | Opens the feed source plugins view. |
 | `/api/resources` | `POST` | Creates a library resource. |
 | `/api/stories/:id/bookmark` | `PATCH` | Adds or removes a story from the Reading queue. |
 | `/api/feed-sources` | `POST` | Creates a source configuration. |
@@ -148,9 +151,12 @@ See [ROADMAP.md](ROADMAP.md) for how these configurations will become a schedule
 ```text
 app/
   api/                    Route handlers for library, bookmarks, and feed sources
-  page.tsx                Server-rendered application entry point
+  page.tsx                Today route
+  library/page.tsx        Library route
+  inbox/page.tsx          Reading queue route
+  plugins/page.tsx        Feed source plugins route
 components/
-  devscope-app.tsx        Main client experience and views
+  devscope/               Shared shell plus route-specific Devscope views
   ui/                     shadcn/ui component sources
 db/
   index.ts                PostgreSQL and Drizzle initialization
