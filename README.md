@@ -82,6 +82,20 @@ Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically when the
 if you want user-selected times to be picked up closely; Vercel Hobby accounts
 may be limited to daily cron execution.
 
+This project includes [vercel.json](vercel.json), which calls
+`/api/schedules/run` hourly in production:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/schedules/run",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+```
+
 ### Configure Google sign-in
 
 1. Enable Google in Supabase Dashboard → Authentication → Providers.
