@@ -1,10 +1,46 @@
+"use client";
+
 import { EmptyState } from "@/components/devscope/empty-state";
 import { DISPLAY_LOCALE, DISPLAY_TIME_ZONE, getExternalHref } from "@/components/devscope/constants";
 import { Badge } from "@/components/ui/badge";
-import type { Resource } from "@/lib/database.types";
+import type { PageResult, Resource } from "@/lib/database.types";
 import { ExternalLink, FileText, Link2, Newspaper } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export function LibraryView({ resources }: { resources: Resource[] }) {
+export function LibraryView({
+  initialResources,
+  initialNextOffset,
+}: {
+  initialResources: Resource[];
+  initialNextOffset: number | null;
+}) {
+  const [resources, setResources] = useState(initialResources);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadMore = useCallback(async () => {
+    if (nextOffset === null) return;
+    setLoadingMore(true);
+    const response = await fetch(`/api/resources?offset=${nextOffset}&limit=50`);
+    const page = (await response.json()) as PageResult<Resource> | { error: string };
+    setLoadingMore(false);
+    if (!response.ok || "error" in page) return;
+
+    setResources((current) => [...current, ...page.items]);
+    setNextOffset(page.nextOffset);
+  }, [nextOffset]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || nextOffset === null) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && !loadingMore) void loadMore();
+    }, { rootMargin: "400px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, loadingMore, nextOffset]);
+
   return (
     <div className="mx-auto max-w-262.5 px-4 py-8 md:px-8 md:py-10">
       <p className="text-xs font-semibold uppercase text-[#1e6b55]">Personal knowledge</p>
@@ -59,6 +95,8 @@ export function LibraryView({ resources }: { resources: Resource[] }) {
           })}
         </div>
       ) : <EmptyState title="Your library is empty" text="Add a link, PDF, or note to create your first database record." />}
+      <div ref={sentinelRef} className="h-10" />
+      {loadingMore ? <p className="py-4 text-center text-xs text-[#858d89]">Loading more...</p> : null}
     </div>
   );
 }

@@ -144,3 +144,46 @@ export const feedSources = pgTable(
     uniqueIndex("feed_sources_user_url_key").on(table.user_id, table.url),
   ],
 );
+
+export const pluginSchedules = pgTable(
+  "plugin_schedules",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    user_id: uuid("user_id"),
+    name: text("name").notNull().default("Daily active plugin run"),
+    time_of_day: text("time_of_day").notNull().default("09:00"),
+    timezone: text("timezone").notNull().default("UTC"),
+    is_enabled: boolean("is_enabled").notNull().default(true),
+    last_run_at: timestamp("last_run_at", {
+      withTimezone: true,
+      mode: "string",
+    }),
+    next_run_at: timestamp("next_run_at", {
+      withTimezone: true,
+      mode: "string",
+    }).notNull(),
+    last_status: text("last_status")
+      .$type<"idle" | "success" | "failed">()
+      .notNull()
+      .default("idle"),
+    last_error: text("last_error"),
+    last_item_count: integer("last_item_count").notNull().default(0),
+    created_at: timestamp("created_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+    updated_at: timestamp("updated_at", {
+      withTimezone: true,
+      mode: "string",
+    })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    check("plugin_schedules_time_check", sql`${table.time_of_day} ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'`),
+    index("plugin_schedules_due_idx").on(table.is_enabled, table.next_run_at),
+    index("plugin_schedules_user_id_idx").on(table.user_id),
+  ],
+);

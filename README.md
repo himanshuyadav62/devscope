@@ -13,6 +13,8 @@ The project currently provides the application shell and database-backed workspa
 - A Plugins screen for configuring feed sources.
 - Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `Hugging Face`, `Hacker News`, `arXiv`, `npm`, and `Custom` providers.
 - On-demand GitHub repository, YouTube video, Hugging Face Hub, and Hacker News discovery from the Plugins screen.
+- Daily scheduler records that run all active supported plugins when `/api/schedules/run` is triggered by cron.
+- Infinite-scroll pagination for feed, library, and reading queue data with a default page size of 50.
 - Google sign-in through Supabase Auth with cookie-based SSR sessions.
 - Per-user feed sources, stories, bookmarks, and library records protected by RLS.
 - Source enable/disable controls and topic labels.
@@ -22,7 +24,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope supports on-demand ingestion for GitHub Radar, YouTube Scout, Hugging Face Scout, and Hacker News Scout. Scheduled ingestion and the remaining provider adapters are not implemented yet.
+Devscope supports on-demand and scheduled ingestion for GitHub Radar, YouTube Scout, Hugging Face Scout, and Hacker News Scout. The remaining provider adapters are not implemented yet.
 
 ## Stack
 
@@ -58,11 +60,27 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 GITHUB_TOKEN=optional_github_token
 YOUTUBE_API_KEY=your_youtube_data_api_key
 HUGGINGFACE_TOKEN=optional_huggingface_token
+CRON_SECRET=random_16_plus_character_secret
 ```
 
 `POSTGRES_PRISMA_URL` is also accepted by the application. Drizzle Kit additionally accepts `POSTGRES_URL_NON_POOLING` when it is available.
 
 Never commit database credentials. The repository ignores environment files.
+
+### Configure scheduled ingestion
+
+Users can add daily UTC schedules from the Plugins page. The schedules run all
+active supported source plugins when a cron provider calls:
+
+```bash
+GET /api/schedules/run
+Authorization: Bearer $CRON_SECRET
+```
+
+Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically when the
+`CRON_SECRET` environment variable is configured. Use a frequent cron interval
+if you want user-selected times to be picked up closely; Vercel Hobby accounts
+may be limited to daily cron execution.
 
 ### Configure Google sign-in
 
@@ -125,10 +143,15 @@ Database access is centralized in [lib/data.ts](lib/data.ts) and uses Drizzle. T
 | `/inbox` | `GET` | Opens the saved stories / Reading queue view. |
 | `/plugins` | `GET` | Opens the feed source plugins view. |
 | `/api/resources` | `POST` | Creates a library resource. |
+| `/api/resources` | `GET` | Returns a paginated resource page. |
+| `/api/stories` | `GET` | Returns a paginated story page for feed or reading queue. |
 | `/api/stories/:id/bookmark` | `PATCH` | Adds or removes a story from the Reading queue. |
 | `/api/feed-sources` | `POST` | Creates a source configuration. |
 | `/api/feed-sources/:id` | `PATCH` | Enables or pauses a source configuration. |
 | `/api/feed-sources/:id/sync` | `POST` | Runs a supported source and inserts deduplicated feed items. |
+| `/api/schedules` | `GET`, `POST` | Lists or creates daily active-plugin schedules. |
+| `/api/schedules/:id` | `PATCH`, `DELETE` | Updates or deletes a schedule. |
+| `/api/schedules/run` | `GET`, `POST` | Cron endpoint that runs due schedules. |
 
 ## Feed Source Ideas
 

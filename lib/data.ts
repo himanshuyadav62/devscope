@@ -1,15 +1,24 @@
 import "server-only";
 
 import { getDb } from "@/db";
-import { feedSources, resources, stories } from "@/db/schema";
+import { feedSources, pluginSchedules, resources, stories } from "@/db/schema";
 import type {
   FeedSource,
   NewFeedSource,
+  NewPluginSchedule,
   NewResource,
+  PageResult,
+  PluginSchedule,
   Resource,
   Story,
 } from "@/lib/database.types";
-import { and, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, lte, sql } from "drizzle-orm";
+
+export const DEFAULT_PAGE_SIZE = 50;
+
+function clampPageSize(value: number, fallback = DEFAULT_PAGE_SIZE) {
+  return Number.isFinite(value) ? Math.min(100, Math.max(1, Math.round(value))) : fallback;
+}
 
 export async function getStories(userId: string): Promise<Story[]> {
   return getDb()
@@ -17,6 +26,60 @@ export async function getStories(userId: string): Promise<Story[]> {
     .from(stories)
     .where(eq(stories.user_id, userId))
     .orderBy(desc(stories.published_at));
+}
+
+export async function getStoriesPage(
+  userId: string,
+  {
+    limit = DEFAULT_PAGE_SIZE,
+    offset = 0,
+    topic,
+    savedOnly = false,
+  }: {
+    limit?: number;
+    offset?: number;
+    topic?: string | null;
+    savedOnly?: boolean;
+  } = {},
+): Promise<PageResult<Story>> {
+  const pageSize = clampPageSize(limit);
+  const conditions = [eq(stories.user_id, userId)];
+  if (topic && topic !== "All") conditions.push(sql`${topic} = any(${stories.topics})`);
+  if (savedOnly) conditions.push(eq(stories.is_saved, true));
+
+  const rows = await getDb()
+    .select()
+    .from(stories)
+    .where(and(...conditions))
+    .orderBy(desc(stories.published_at), desc(stories.id))
+    .limit(pageSize + 1)
+    .offset(Math.max(0, offset));
+
+  return {
+    items: rows.slice(0, pageSize),
+    nextOffset: rows.length > pageSize ? Math.max(0, offset) + pageSize : null,
+  };
+}
+
+export async function getStoryShellMeta(userId: string): Promise<{
+  topics: string[];
+  savedStoriesCount: number;
+}> {
+  const [topicRows, savedCount] = await Promise.all([
+    getDb()
+      .select({ topics: stories.topics })
+      .from(stories)
+      .where(eq(stories.user_id, userId)),
+    getDb()
+      .select({ count: count() })
+      .from(stories)
+      .where(and(eq(stories.user_id, userId), eq(stories.is_saved, true))),
+  ]);
+
+  return {
+    topics: Array.from(new Set(topicRows.flatMap((row) => row.topics))).sort((a, b) => a.localeCompare(b)),
+    savedStoriesCount: savedCount[0]?.count ?? 0,
+  };
 }
 
 export async function getResources(userId: string): Promise<Resource[]> {
@@ -27,11 +90,50 @@ export async function getResources(userId: string): Promise<Resource[]> {
     .orderBy(desc(resources.created_at));
 }
 
+export async function getResourcesPage(
+  userId: string,
+  {
+    limit = DEFAULT_PAGE_SIZE,
+    offset = 0,
+  }: {
+    limit?: number;
+    offset?: number;
+  } = {},
+): Promise<PageResult<Resource>> {
+  const pageSize = clampPageSize(limit);
+  const rows = await getDb()
+    .select()
+    .from(resources)
+    .where(eq(resources.user_id, userId))
+    .orderBy(desc(resources.created_at), desc(resources.id))
+    .limit(pageSize + 1)
+    .offset(Math.max(0, offset));
+
+  return {
+    items: rows.slice(0, pageSize),
+    nextOffset: rows.length > pageSize ? Math.max(0, offset) + pageSize : null,
+  };
+}
+
 export async function getFeedSources(userId: string): Promise<FeedSource[]> {
   return getDb()
     .select()
     .from(feedSources)
     .where(eq(feedSources.user_id, userId))
+    .orderBy(desc(feedSources.created_at));
+}
+
+export async function getRunnableFeedSources(userId: string): Promise<FeedSource[]> {
+  return getDb()
+    .select()
+    .from(feedSources)
+    .where(
+      and(
+        eq(feedSources.user_id, userId),
+        eq(feedSources.is_enabled, true),
+        sql`${feedSources.provider} in ('GitHub', 'YouTube', 'Hugging Face', 'Hacker News')`,
+      ),
+    )
     .orderBy(desc(feedSources.created_at));
 }
 
@@ -164,4 +266,92 @@ export async function setStorySaved(
 
   if (!story) throw new Error("Story not found.");
   return story;
+}
+
+export async function getPluginSchedules(userId: string): Promise<PluginSchedule[]> {
+  return getDb()
+    .select()
+    .from(pluginSchedules)
+    .where(eq(pluginSchedules.user_id, userId))
+    .orderBy(desc(pluginSchedules.created_at));
+}
+
+export async function createPluginSchedule(
+  userId: string,
+  input: NewPluginSchedule,
+): Promise<PluginSchedule> {
+  const [schedule] = await getDb()
+    .insert(pluginSchedules)
+    .values({ ...input, user_id: userId })
+    .returning();
+
+  if (!schedule) throw new Error("The database did not return the new schedule.");
+  return schedule;
+}
+
+export async function updatePluginSchedule(
+  userId: string,
+  id: string,
+  input: Partial<NewPluginSchedule>,
+): Promise<PluginSchedule> {
+  const [schedule] = await getDb()
+    .update(pluginSchedules)
+    .set({ ...input, updated_at: new Date().toISOString() })
+    .where(and(eq(pluginSchedules.id, id), eq(pluginSchedules.user_id, userId)))
+    .returning();
+
+  if (!schedule) throw new Error("Schedule not found.");
+  return schedule;
+}
+
+export async function deletePluginSchedule(userId: string, id: string): Promise<void> {
+  await getDb()
+    .delete(pluginSchedules)
+    .where(and(eq(pluginSchedules.id, id), eq(pluginSchedules.user_id, userId)));
+}
+
+export async function getDuePluginSchedules(now = new Date().toISOString()): Promise<PluginSchedule[]> {
+  return getDb()
+    .select()
+    .from(pluginSchedules)
+    .where(and(eq(pluginSchedules.is_enabled, true), lte(pluginSchedules.next_run_at, now)))
+    .orderBy(pluginSchedules.next_run_at)
+    .limit(25);
+}
+
+export async function completePluginScheduleRun(
+  id: string,
+  nextRunAt: string,
+  itemCount: number,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await getDb()
+    .update(pluginSchedules)
+    .set({
+      last_run_at: now,
+      next_run_at: nextRunAt,
+      last_status: "success",
+      last_error: null,
+      last_item_count: itemCount,
+      updated_at: now,
+    })
+    .where(eq(pluginSchedules.id, id));
+}
+
+export async function failPluginScheduleRun(
+  id: string,
+  nextRunAt: string,
+  message: string,
+): Promise<void> {
+  const now = new Date().toISOString();
+  await getDb()
+    .update(pluginSchedules)
+    .set({
+      last_run_at: now,
+      next_run_at: nextRunAt,
+      last_status: "failed",
+      last_error: message.slice(0, 500),
+      updated_at: now,
+    })
+    .where(eq(pluginSchedules.id, id));
 }

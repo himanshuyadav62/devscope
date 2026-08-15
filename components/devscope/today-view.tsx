@@ -4,21 +4,26 @@ import { EmptyState } from "@/components/devscope/empty-state";
 import { DISPLAY_LOCALE, DISPLAY_TIME_ZONE } from "@/components/devscope/constants";
 import { StoryRow } from "@/components/devscope/story-row";
 import { Button } from "@/components/ui/button";
-import type { Story } from "@/lib/database.types";
+import type { PageResult, Story } from "@/lib/database.types";
 import { ChevronDown } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export function TodayView({
   initialStories,
+  initialNextOffset,
   renderedAt,
   initialTopic = "All",
 }: {
   initialStories: Story[];
+  initialNextOffset: number | null;
   renderedAt: string;
   initialTopic?: string;
 }) {
   const [stories, setStories] = useState(initialStories);
   const [topic, setTopic] = useState(initialTopic);
+  const [nextOffset, setNextOffset] = useState(initialNextOffset);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
   const topics = useMemo(
     () => [
       "All",
@@ -63,6 +68,40 @@ export function TodayView({
     }
   }
 
+  async function loadStories(nextTopic: string, offset: number, replace = false) {
+    setLoadingMore(true);
+    const params = new URLSearchParams({
+      offset: String(offset),
+      limit: "50",
+    });
+    if (nextTopic !== "All") params.set("topic", nextTopic);
+    const response = await fetch(`/api/stories?${params}`);
+    const page = (await response.json()) as PageResult<Story> | { error: string };
+    setLoadingMore(false);
+    if (!response.ok || "error" in page) return;
+
+    setStories((current) => replace ? page.items : [...current, ...page.items]);
+    setNextOffset(page.nextOffset);
+  }
+
+  function selectTopic(nextTopic: string) {
+    setTopic(nextTopic);
+    void loadStories(nextTopic, 0, true);
+  }
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || nextOffset === null) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0]?.isIntersecting && !loadingMore) {
+        void loadStories(topic, nextOffset);
+      }
+    }, { rootMargin: "400px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadingMore, nextOffset, topic]);
+
   return (
     <div className="mx-auto max-w-295 px-4 py-8 md:px-8 md:py-10">
       <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[#d8dcd6] pb-7">
@@ -80,7 +119,7 @@ export function TodayView({
           {topics.map((option) => (
             <Button
               key={option}
-              onClick={() => setTopic(option)}
+              onClick={() => selectTopic(option)}
               variant={topic === option ? "default" : "outline"}
               size="xs"
               className="shrink-0"
@@ -119,7 +158,7 @@ export function TodayView({
                 <Button
                   key={label}
                   variant="ghost"
-                  onClick={() => setTopic(label)}
+                  onClick={() => selectTopic(label)}
                   className="h-auto w-full justify-start gap-3 px-0 py-3 text-left"
                 >
                   <span className="font-mono text-xs text-[#9aa19d]">{String(index + 1).padStart(2, "0")}</span>
@@ -135,6 +174,8 @@ export function TodayView({
           )}
         </aside>
       </div>
+      <div ref={sentinelRef} className="h-10" />
+      {loadingMore ? <p className="py-4 text-center text-xs text-[#858d89]">Loading more...</p> : null}
     </div>
   );
 }

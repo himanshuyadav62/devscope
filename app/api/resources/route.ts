@@ -1,9 +1,28 @@
-import { createResource } from "@/lib/data";
+import { DEFAULT_PAGE_SIZE, createResource, getResourcesPage } from "@/lib/data";
 import type { NewResource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
 const resourceTypes = new Set(["Link", "PDF", "Note"]);
+
+function intParam(value: string | null, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export async function GET(request: Request) {
+  try {
+    const user = await requireUser();
+    const url = new URL(request.url);
+    const limit = intParam(url.searchParams.get("limit"), DEFAULT_PAGE_SIZE);
+    const offset = intParam(url.searchParams.get("offset"), 0);
+    const page = await getResourcesPage(user.id, { limit, offset });
+    return NextResponse.json(page);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not load resources.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
 
 export async function POST(request: Request) {
   try {

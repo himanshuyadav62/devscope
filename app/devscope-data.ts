@@ -1,5 +1,5 @@
 import { getCurrentUser } from "@/lib/auth";
-import { getStories } from "@/lib/data";
+import { getStoryShellMeta } from "@/lib/data";
 import { redirect } from "next/navigation";
 
 export async function requireDevscopeUser() {
@@ -13,10 +13,5 @@ export function getStoryTopics(stories: Array<{ topics: string[] }>) {
 }
 
 export async function getShellData(userId: string) {
-  const stories = await getStories(userId);
-  return {
-    stories,
-    topics: getStoryTopics(stories),
-    savedStoriesCount: stories.filter((story) => story.is_saved).length,
-  };
+  return getStoryShellMeta(userId);
 }
