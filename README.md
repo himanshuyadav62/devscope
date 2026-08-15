@@ -78,19 +78,20 @@ Authorization: Bearer $CRON_SECRET
 ```
 
 Vercel Cron sends `Authorization: Bearer $CRON_SECRET` automatically when the
-`CRON_SECRET` environment variable is configured. Use a frequent cron interval
-if you want user-selected times to be picked up closely; Vercel Hobby accounts
-may be limited to daily cron execution.
+`CRON_SECRET` environment variable is configured. Vercel Hobby accounts support
+cron jobs only once per day, so the included production cron checks schedules
+daily at midnight UTC. More frequent checks require a Vercel plan that supports
+them or another cron provider.
 
 This project includes [vercel.json](vercel.json), which calls
-`/api/schedules/run` hourly in production:
+`/api/schedules/run` daily in production:
 
 ```json
 {
   "crons": [
     {
       "path": "/api/schedules/run",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
