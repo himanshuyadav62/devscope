@@ -3,7 +3,7 @@ import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
-const providers = new Set(["RSS", "GitHub", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"]);
+const providers = new Set(["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"]);
 
 function getHttpUrl(value: string) {
   try {
@@ -36,6 +36,13 @@ export async function POST(request: Request) {
     if (provider === "GitHub" && topics.length === 0 && !config.languages?.length) {
       return NextResponse.json(
         { error: "GitHub Radar requires at least one topic or language." },
+        { status: 400 },
+      );
+    }
+
+    if (provider === "GitHub Releases" && !config.repositories?.length) {
+      return NextResponse.json(
+        { error: "GitHub Releases requires at least one repository." },
         { status: 400 },
       );
     }

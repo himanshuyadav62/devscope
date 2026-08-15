@@ -301,7 +301,7 @@ function PluginSourceRow({
   return (
     <div className="flex items-center gap-3 py-5">
       <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d] dark:bg-[#1c2521] dark:text-[#8bc5af]">
-        {source.provider === "GitHub"
+        {source.provider === "GitHub" || source.provider === "GitHub Releases"
           ? <GitFork className="size-4" />
           : source.provider === "YouTube"
             ? <Video className="size-4" />

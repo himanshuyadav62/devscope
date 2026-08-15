@@ -15,6 +15,7 @@ export const DISPLAY_TIME_ZONE = "Asia/Kolkata";
 
 export const runnableProviders = new Set<FeedSource["provider"]>([
   "GitHub",
+  "GitHub Releases",
   "YouTube",
   "Hugging Face",
   "Hacker News",

@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FeedSource, NewFeedSource } from "@/lib/database.types";
 import { FormEvent, useState } from "react";
 
-const providerOptions = ["RSS", "GitHub", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"] as const;
+const providerOptions = ["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"] as const;
 
 export function AddFeedSourceDialog({
   open,
@@ -37,6 +37,7 @@ export function AddFeedSourceDialog({
     const csv = (name: string) => String(data.get(name) ?? "").split(",").map((item) => item.trim()).filter(Boolean);
     const topics = csv("topics");
     const languages = csv("languages");
+    const repositories = csv("repositories");
     const channels = csv("channels");
     const tags = csv("tags");
     const author = String(data.get("author") ?? "").trim();
@@ -56,6 +57,8 @@ export function AddFeedSourceDialog({
         provider,
         url: provider === "GitHub"
           ? `https://github.com/search?q=${encodeURIComponent([...topics, ...languages].join(" "))}&type=repositories`
+          : provider === "GitHub Releases"
+            ? `https://github.com/${repositories[0] ?? ""}/releases`
           : provider === "YouTube"
             ? `https://www.youtube.com/results?search_query=${encodeURIComponent([...topics, ...channels].join(" "))}`
             : provider === "Hugging Face"
@@ -66,6 +69,8 @@ export function AddFeedSourceDialog({
         topics,
         config: provider === "GitHub"
           ? { mode: "discover", languages, days: Number(data.get("days")) || 30, minStars: Number(data.get("minStars")) || 25, limit: Number(data.get("limit")) || 12 }
+          : provider === "GitHub Releases"
+            ? { mode: "discover", repositories, days: Number(data.get("days")) || 90, includePrereleases: data.get("includePrereleases") === "on", limit: Number(data.get("limit")) || 12 }
           : provider === "YouTube"
             ? { mode: "discover", channels, days: Number(data.get("days")) || 14, limit: Number(data.get("limit")) || 12 }
             : provider === "Hugging Face"
@@ -110,6 +115,7 @@ export function AddFeedSourceDialog({
           <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" />
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
           {provider === "GitHub" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Radar searches public repositories using your topics and languages.</p>
+            : provider === "GitHub Releases" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Releases tracks release notes from repositories you choose.</p>
             : provider === "YouTube" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">YouTube Scout finds recent videos by topic, selected channels, or both.</p>
               : provider === "Hugging Face" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.</p>
                 : provider === "Hacker News" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.</p>
@@ -117,6 +123,7 @@ export function AddFeedSourceDialog({
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
           {provider === "GitHub" ? <GitHubFields />
+            : provider === "GitHub Releases" ? <GitHubReleasesFields />
             : provider === "YouTube" ? <YouTubeFields />
               : provider === "Hugging Face" ? <HuggingFaceFields />
                 : provider === "Hacker News" ? <HackerNewsFields />
@@ -141,6 +148,24 @@ function GitHubFields() {
         <NumberField id="source-days" name="days" label="Created within" min={1} max={365} defaultValue={30} />
         <NumberField id="source-stars" name="minStars" label="Minimum stars" min={0} defaultValue={25} />
         <NumberField id="source-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+      </div>
+    </>
+  );
+}
+
+function GitHubReleasesFields() {
+  return (
+    <>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="source-repositories">Repositories</label>
+      <Input id="source-repositories" name="repositories" className="mt-2" placeholder="vercel/next.js, supabase/supabase, drizzle-team/drizzle-orm" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Separate repositories with commas. Use owner/repo or GitHub repository URLs.</p>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <NumberField id="release-days" name="days" label="Published within" min={1} max={365} defaultValue={90} />
+        <NumberField id="release-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+        <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="release-prereleases">
+          <input id="release-prereleases" name="includePrereleases" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+          Prereleases
+        </label>
       </div>
     </>
   );

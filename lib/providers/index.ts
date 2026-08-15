@@ -1,5 +1,6 @@
 import type { FeedSource } from "@/lib/database.types";
 import type { FeedProvider } from "@/lib/providers/types";
+import { GitHubReleasesProvider } from "@/lib/providers/github-releases";
 import { GitHubProvider } from "@/lib/providers/github";
 import { HackerNewsProvider } from "@/lib/providers/hackernews";
 import { HuggingFaceProvider } from "@/lib/providers/huggingface";
@@ -10,5 +11,6 @@ export function getFeedProvider(source: FeedSource): FeedProvider {
   if (source.provider === "YouTube") return new YouTubeProvider();
   if (source.provider === "Hugging Face") return new HuggingFaceProvider();
   if (source.provider === "Hacker News") return new HackerNewsProvider();
+  if (source.provider === "GitHub Releases") return new GitHubReleasesProvider();
   throw new Error(`${source.provider} ingestion is not implemented yet.`);
 }

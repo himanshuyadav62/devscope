@@ -11,8 +11,8 @@ The project currently provides the application shell and database-backed workspa
 - Bookmarking: saved stories appear in the Reading queue.
 - A personal library for links, PDFs, and notes. Valid external links can be opened directly from the library.
 - A Plugins screen for configuring feed sources.
-- Database-backed source configuration for `RSS`, `GitHub`, `YouTube`, `Hugging Face`, `Hacker News`, `arXiv`, `npm`, and `Custom` providers.
-- On-demand GitHub repository, YouTube video, Hugging Face Hub, and Hacker News discovery from the Plugins screen.
+- Database-backed source configuration for `RSS`, `GitHub`, `GitHub Releases`, `YouTube`, `Hugging Face`, `Hacker News`, `arXiv`, `npm`, and `Custom` providers.
+- On-demand GitHub repository, GitHub release, YouTube video, Hugging Face Hub, and Hacker News discovery from the Plugins screen.
 - Daily scheduler records that run all active supported plugins when `/api/schedules/run` is triggered by cron.
 - Infinite-scroll pagination for feed, library, and reading queue data with a default page size of 50.
 - Google sign-in through Supabase Auth with cookie-based SSR sessions.
@@ -24,7 +24,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope supports on-demand and scheduled ingestion for GitHub Radar, YouTube Scout, Hugging Face Scout, and Hacker News Scout. The remaining provider adapters are not implemented yet.
+Devscope supports on-demand and scheduled ingestion for GitHub Radar, GitHub Releases, YouTube Scout, Hugging Face Scout, and Hacker News Scout. The remaining provider adapters are not implemented yet.
 
 ## Stack
 
@@ -174,6 +174,7 @@ These are useful initial sources to add through Plugins:
 
 - Engineering blogs and product release notes through RSS or Atom feeds.
 - GitHub release feeds for important frameworks and tools.
+- GitHub Releases sources for repositories your team depends on.
 - YouTube topics and selected channels through YouTube Scout.
 - Hugging Face models, datasets, and Spaces by topic, tag, author, or organization.
 - Hacker News top, best, new, Show HN, Ask HN, and jobs feeds.

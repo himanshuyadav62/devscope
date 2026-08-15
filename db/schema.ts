@@ -88,7 +88,7 @@ export const feedSources = pgTable(
     user_id: uuid("user_id"),
     name: text("name").notNull(),
     provider: text("provider")
-      .$type<"RSS" | "GitHub" | "YouTube" | "Hugging Face" | "Hacker News" | "arXiv" | "npm" | "Custom">()
+      .$type<"RSS" | "GitHub" | "GitHub Releases" | "YouTube" | "Hugging Face" | "Hacker News" | "arXiv" | "npm" | "Custom">()
       .notNull(),
     url: text("url").notNull(),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
@@ -107,6 +107,8 @@ export const feedSources = pgTable(
         hnFeed?: "top" | "best" | "new" | "ask" | "show" | "jobs";
         minScore?: number;
         includeDiscussions?: boolean;
+        repositories?: string[];
+        includePrereleases?: boolean;
       }>()
       .notNull()
       .default(sql`'{}'::jsonb`),
@@ -137,7 +139,7 @@ export const feedSources = pgTable(
   (table) => [
     check(
       "feed_sources_provider_check",
-      sql`${table.provider} in ('RSS', 'GitHub', 'YouTube', 'Hugging Face', 'Hacker News', 'arXiv', 'npm', 'Custom')`,
+      sql`${table.provider} in ('RSS', 'GitHub', 'GitHub Releases', 'YouTube', 'Hugging Face', 'Hacker News', 'arXiv', 'npm', 'Custom')`,
     ),
     index("feed_sources_enabled_idx").on(table.is_enabled),
     index("feed_sources_user_id_idx").on(table.user_id),
