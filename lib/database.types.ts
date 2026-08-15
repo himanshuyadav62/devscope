@@ -27,3 +27,13 @@ export type PageResult<T> = {
   items: T[];
   nextOffset: number | null;
 };
+
+export type GitHubSavedRepository = {
+  fullName: string;
+  url: string;
+  description: string | null;
+  stars: number;
+  language: string | null;
+  topics: string[];
+  source: "saved";
+};

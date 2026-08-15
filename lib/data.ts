@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { feedSources, pluginSchedules, resources, stories } from "@/db/schema";
 import type {
   FeedSource,
+  GitHubSavedRepository,
   NewFeedSource,
   NewPluginSchedule,
   NewResource,
@@ -80,6 +81,55 @@ export async function getStoryShellMeta(userId: string): Promise<{
     topics: Array.from(new Set(topicRows.flatMap((row) => row.topics))).sort((a, b) => a.localeCompare(b)),
     savedStoriesCount: savedCount[0]?.count ?? 0,
   };
+}
+
+function repositoryFromGitHubUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (url.hostname !== "github.com") return null;
+    const [owner, repo] = url.pathname.split("/").filter(Boolean);
+    return owner && repo ? `${owner}/${repo}` : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function getSavedGitHubRepositories(userId: string): Promise<GitHubSavedRepository[]> {
+  const rows = await getDb()
+    .select({
+      title: stories.title,
+      source_url: stories.source_url,
+      summary: stories.summary,
+      metadata: stories.metadata,
+    })
+    .from(stories)
+    .where(
+      and(
+        eq(stories.user_id, userId),
+        eq(stories.is_saved, true),
+        sql`${stories.source_url} like 'https://github.com/%/%'`,
+      ),
+    )
+    .orderBy(desc(stories.updated_at))
+    .limit(100);
+
+  const repositories = rows
+    .map((story): GitHubSavedRepository | null => {
+      const fullName = repositoryFromGitHubUrl(story.source_url) ?? story.title;
+      if (!fullName || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(fullName)) return null;
+      return {
+        fullName,
+        url: `https://github.com/${fullName}`,
+        description: story.summary || null,
+        stars: typeof story.metadata.stars === "number" ? story.metadata.stars : 0,
+        language: typeof story.metadata.language === "string" ? story.metadata.language : null,
+        topics: [],
+        source: "saved" as const,
+      };
+    })
+    .filter((repository): repository is GitHubSavedRepository => Boolean(repository));
+
+  return Array.from(new Map(repositories.map((repository) => [repository.fullName, repository])).values());
 }
 
 export async function getResources(userId: string): Promise<Resource[]> {

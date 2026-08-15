@@ -94,7 +94,7 @@ export const feedSources = pgTable(
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
     config: jsonb("config")
       .$type<{
-        mode?: "discover";
+        mode?: "discover" | "trending" | "personal" | "selected";
         languages?: string[];
         days?: number;
         minStars?: number;
@@ -108,6 +108,7 @@ export const feedSources = pgTable(
         minScore?: number;
         includeDiscussions?: boolean;
         repositories?: string[];
+        githubUsername?: string;
         includePrereleases?: boolean;
       }>()
       .notNull()

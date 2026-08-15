@@ -40,7 +40,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (provider === "GitHub Releases" && !config.repositories?.length) {
+    if (provider === "GitHub Releases" && config.mode === "selected" && !config.repositories?.length) {
       return NextResponse.json(
         { error: "GitHub Releases requires at least one repository." },
         { status: 400 },
