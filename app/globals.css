@@ -139,12 +139,57 @@
 .dark .devscope-shell [class*="text-[#7"],
 .dark .devscope-shell [class*="text-[#8"],
 .dark .devscope-shell [class*="text-[#9"],
-.dark .devscope-shell [class*="text-[#a"] {
+.dark .devscope-shell [class*="text-[#a"],
+.dark [data-slot="dialog-content"] [class*="text-[#5"],
+.dark [data-slot="dialog-content"] [class*="text-[#6"],
+.dark [data-slot="dialog-content"] [class*="text-[#7"],
+.dark [data-slot="dialog-content"] [class*="text-[#8"],
+.dark [data-slot="dialog-content"] [class*="text-[#9"],
+.dark [data-slot="dialog-content"] [class*="text-[#a"] {
   color: #aab4af;
 }
 
 .dark .devscope-shell [class*="border-[#c"],
 .dark .devscope-shell [class*="border-[#d"],
-.dark .devscope-shell [class*="border-[#e"] {
+.dark .devscope-shell [class*="border-[#e"],
+.dark [data-slot="dialog-content"] [class*="border-[#c"],
+.dark [data-slot="dialog-content"] [class*="border-[#d"],
+.dark [data-slot="dialog-content"] [class*="border-[#e"] {
+  border-color: #2b3530;
+}
+
+.dark .devscope-shell .bg-white,
+.dark [data-slot="dialog-content"] .bg-white {
+  background-color: #1c2521;
+}
+
+.dark .devscope-shell [class*="bg-[#f"],
+.dark .devscope-shell [class*="bg-[#e"],
+.dark [data-slot="dialog-content"] [class*="bg-[#f"],
+.dark [data-slot="dialog-content"] [class*="bg-[#e"] {
+  background-color: #151b18;
+}
+
+.dark .devscope-shell [class*="text-[#1"],
+.dark .devscope-shell [class*="text-[#2"],
+.dark .devscope-shell [class*="text-[#3"],
+.dark .devscope-shell [class*="text-[#4"],
+.dark [data-slot="dialog-content"] [class*="text-[#1"],
+.dark [data-slot="dialog-content"] [class*="text-[#2"],
+.dark [data-slot="dialog-content"] [class*="text-[#3"],
+.dark [data-slot="dialog-content"] [class*="text-[#4"] {
+  color: #edf1ee;
+}
+
+.dark .devscope-shell select,
+.dark .devscope-shell option,
+.dark [data-slot="dialog-content"] select,
+.dark [data-slot="dialog-content"] option {
+  background-color: #151b18;
+  color: #edf1ee;
+}
+
+.dark .devscope-shell select,
+.dark [data-slot="dialog-content"] select {
   border-color: #2b3530;
 }

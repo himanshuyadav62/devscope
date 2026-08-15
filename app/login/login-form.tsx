@@ -32,13 +32,13 @@ export function LoginForm({ next = "/" }: { next?: string }) {
         <Sparkles className="size-5" />
       </span>
       <h1 className="mt-6 font-heading text-3xl font-semibold">Welcome to Devscope</h1>
-      <p className="mt-3 text-sm leading-6 text-[#69716d]">
+      <p className="mt-3 text-sm leading-6 text-[#69716d] dark:text-[#aab4af]">
         Sign in to keep your feed sources, discoveries, bookmarks, and library private.
       </p>
       <Button className="mt-7 w-full" onClick={signIn} disabled={loading}>
         {loading ? "Opening Google…" : "Continue with Google"}
       </Button>
-      {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
+      {error ? <p className="mt-3 text-xs text-red-700 dark:text-red-400">{error}</p> : null}
     </div>
   );
 }

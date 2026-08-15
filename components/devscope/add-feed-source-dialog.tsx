@@ -294,7 +294,7 @@ function GitHubReleasesFields({
 }) {
   return (
     <>
-      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-[#dce2dd] bg-[#f8faf7] p-1">
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl border border-[#dce2dd] bg-[#f8faf7] p-1 dark:border-[#2b3530] dark:bg-[#151b18]">
         {[
           ["trending", "Trending"],
           ["personal", "My repos"],
@@ -305,7 +305,9 @@ function GitHubReleasesFields({
             type="button"
             onClick={() => onModeChange(value as GitHubReleaseMode)}
             className={`rounded-xl px-2 py-2 text-xs font-semibold transition ${
-              mode === value ? "bg-white text-[#17352c] shadow-sm" : "text-[#66706b] hover:text-[#17352c]"
+              mode === value
+                ? "bg-white text-[#17352c] shadow-sm dark:bg-[#26312c] dark:text-[#edf1ee]"
+                : "text-[#66706b] hover:text-[#17352c] dark:text-[#aab4af] dark:hover:text-[#edf1ee]"
             }`}
           >
             {label}
@@ -322,7 +324,7 @@ function GitHubReleasesFields({
       ) : null}
 
       {mode === "personal" ? (
-        <div className="mt-4 rounded-2xl border border-[#dce2dd] p-3">
+        <div className="mt-4 rounded-2xl border border-[#dce2dd] p-3 dark:border-[#2b3530]">
           <label className="block text-xs font-semibold" htmlFor="github-username">GitHub username</label>
           <div className="mt-2 flex gap-2">
             <Input
@@ -347,7 +349,7 @@ function GitHubReleasesFields({
       ) : null}
 
       {mode === "selected" ? (
-        <div className="mt-4 rounded-2xl border border-[#dce2dd] p-3">
+        <div className="mt-4 rounded-2xl border border-[#dce2dd] p-3 dark:border-[#2b3530]">
           <label className="block text-xs font-semibold" htmlFor="release-repository-search">Search repositories</label>
           <div className="mt-2 flex gap-2">
             <Input
@@ -376,7 +378,7 @@ function GitHubReleasesFields({
               key={repository.fullName}
               type="button"
               onClick={() => onRemoveRepository(repository.fullName)}
-              className="rounded-full border border-[#cfd8d2] bg-white px-3 py-1 text-[11px] font-semibold text-[#26463d]"
+              className="rounded-full border border-[#cfd8d2] bg-white px-3 py-1 text-[11px] font-semibold text-[#26463d] dark:border-[#34423c] dark:bg-[#1c2521] dark:text-[#cfe8dc]"
               title="Remove repository"
             >
               {repository.fullName} ×
@@ -418,10 +420,10 @@ function RepositoryPreview({
             key={repository.fullName}
             type="button"
             onClick={() => onAddRepository(repository)}
-            className="block w-full rounded-xl border border-[#e2e7e3] bg-white p-3 text-left transition hover:border-[#9db8ad]"
+            className="block w-full rounded-xl border border-[#e2e7e3] bg-white p-3 text-left transition hover:border-[#9db8ad] dark:border-[#2b3530] dark:bg-[#1c2521] dark:hover:border-[#557064]"
           >
-            <span className="block text-xs font-semibold text-[#17352c]">{repository.fullName}</span>
-            <span className="mt-1 block truncate text-[11px] text-[#66706b]">
+            <span className="block text-xs font-semibold text-[#17352c] dark:text-[#edf1ee]">{repository.fullName}</span>
+            <span className="mt-1 block truncate text-[11px] text-[#66706b] dark:text-[#aab4af]">
               {repository.description || "No description"} · {repository.stars.toLocaleString("en-US")} stars{repository.language ? ` · ${repository.language}` : ""}
             </span>
           </button>
@@ -494,7 +496,7 @@ function SelectField({ id, name, label, options }: { id: string; name: string; l
   return (
     <div>
       <label className="block text-xs font-semibold" htmlFor={id}>{label}</label>
-      <select id={id} name={name} className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50">
+      <select id={id} name={name} className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]">
         {options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
       </select>
     </div>
