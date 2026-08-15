@@ -331,7 +331,7 @@ function GitHubReleasesFields({
               onChange={(event) => onPersonalUsernameChange(event.target.value)}
               placeholder="e.g. gaearon"
             />
-            <Button type="button" variant="outline" onClick={onLoadPersonalRepositories} disabled={personalLoading}>
+            <Button type="button" variant="outline" onClick={() => void onLoadPersonalRepositories()} disabled={personalLoading}>
               {personalLoading ? "Loading..." : "Load"}
             </Button>
           </div>

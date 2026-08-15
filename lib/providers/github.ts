@@ -37,6 +37,10 @@ function clampInteger(value: unknown, fallback: number, min: number, max: number
     : fallback;
 }
 
+function getList(value: unknown) {
+  return Array.isArray(value) ? value.map((item) => String(item).trim()).filter(Boolean) : [];
+}
+
 function scoreRepository(repository: GitHubRepository, queryTopics: string[]) {
   const ageDays = Math.max(1, (Date.now() - Date.parse(repository.created_at)) / DAY_MS);
   const pushAgeDays = Math.max(0, (Date.now() - Date.parse(repository.pushed_at)) / DAY_MS);
@@ -72,8 +76,8 @@ export class GitHubProvider implements FeedProvider {
     const days = clampInteger(config.days, 30, 1, 365);
     const minStars = clampInteger(config.minStars, 25, 0, 1_000_000);
     const limit = clampInteger(config.limit, 12, 1, 30);
-    const languages = (config.languages ?? []).map((item) => item.trim()).filter(Boolean).slice(0, 5);
-    const topics = source.topics.map((item) => item.trim()).filter(Boolean).slice(0, 8);
+    const languages = getList(config.languages).slice(0, 5);
+    const topics = getList(source.topics).slice(0, 8);
 
     if (!topics.length && !languages.length) {
       throw new Error("GitHub Radar needs at least one topic or language.");
