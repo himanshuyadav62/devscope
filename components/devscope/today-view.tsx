@@ -5,7 +5,6 @@ import { DISPLAY_LOCALE, DISPLAY_TIME_ZONE } from "@/components/devscope/constan
 import { StoryRow } from "@/components/devscope/story-row";
 import { Button } from "@/components/ui/button";
 import type { PageResult, Story } from "@/lib/database.types";
-import { ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export function TodayView({
@@ -128,6 +127,18 @@ export function TodayView({
 
       <section className="py-6">
         <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          <label className="flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#69716d] dark:text-[#aab4af]">
+            Source
+            <select
+              value={source}
+              onChange={(event) => selectSource(event.target.value)}
+              className="h-8 min-w-40 border border-[#cbd1ca] bg-transparent px-2 text-xs normal-case tracking-normal text-[#1c211f] outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]"
+            >
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+          </label>
           {topics.map((option) => (
             <Button
               key={option}
@@ -139,19 +150,6 @@ export function TodayView({
               {option}
             </Button>
           ))}
-          <label className="ml-auto flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#69716d] dark:text-[#aab4af]">
-            Source
-            <select
-              value={source}
-              onChange={(event) => selectSource(event.target.value)}
-              className="h-8 min-w-40 border border-[#cbd1ca] bg-transparent px-2 text-xs normal-case tracking-normal text-[#1c211f] outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]"
-            >
-              {sourceOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none -ml-8 size-3 text-[#8a928e]" />
-          </label>
         </div>
       </section>
 
