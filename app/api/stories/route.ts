@@ -14,8 +14,9 @@ export async function GET(request: Request) {
     const limit = intParam(url.searchParams.get("limit"), DEFAULT_PAGE_SIZE);
     const offset = intParam(url.searchParams.get("offset"), 0);
     const topic = url.searchParams.get("topic");
+    const source = url.searchParams.get("source");
     const savedOnly = url.searchParams.get("savedOnly") === "true";
-    const page = await getStoriesPage(user.id, { limit, offset, topic, savedOnly });
+    const page = await getStoriesPage(user.id, { limit, offset, topic, source, savedOnly });
     return NextResponse.json(page);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not load stories.";

@@ -8,13 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ topic?: string }>;
+  searchParams: Promise<{ topic?: string; source?: string }>;
 }) {
   const user = await requireDevscopeUser();
   const params = await searchParams;
   const [shellData, page] = await Promise.all([
     getShellData(user.id),
-    getStoriesPage(user.id, { limit: DEFAULT_PAGE_SIZE, topic: params.topic }),
+    getStoriesPage(user.id, { limit: DEFAULT_PAGE_SIZE, topic: params.topic, source: params.source }),
   ]);
 
   return (
@@ -24,6 +24,8 @@ export default async function Home({
         initialNextOffset={page.nextOffset}
         renderedAt={new Date().toISOString()}
         initialTopic={params.topic ?? "All"}
+        initialSource={params.source ?? "All"}
+        sources={shellData.sources}
       />
     </AppShell>
   );

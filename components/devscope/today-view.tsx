@@ -13,14 +13,19 @@ export function TodayView({
   initialNextOffset,
   renderedAt,
   initialTopic = "All",
+  initialSource = "All",
+  sources,
 }: {
   initialStories: Story[];
   initialNextOffset: number | null;
   renderedAt: string;
   initialTopic?: string;
+  initialSource?: string;
+  sources: string[];
 }) {
   const [stories, setStories] = useState(initialStories);
   const [topic, setTopic] = useState(initialTopic);
+  const [source, setSource] = useState(initialSource);
   const [nextOffset, setNextOffset] = useState(initialNextOffset);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -31,7 +36,8 @@ export function TodayView({
     ],
     [stories],
   );
-  const filteredStories = topic === "All" ? stories : stories.filter((story) => story.topics.includes(topic));
+  const sourceOptions = useMemo(() => ["All", ...sources], [sources]);
+  const filteredStories = stories;
   const now = new Date(renderedAt);
   const dateLabel = new Intl.DateTimeFormat(DISPLAY_LOCALE, {
     weekday: "long",
@@ -68,13 +74,14 @@ export function TodayView({
     }
   }
 
-  async function loadStories(nextTopic: string, offset: number, replace = false) {
+  async function loadStories(nextTopic: string, nextSource: string, offset: number, replace = false) {
     setLoadingMore(true);
     const params = new URLSearchParams({
       offset: String(offset),
       limit: "50",
     });
     if (nextTopic !== "All") params.set("topic", nextTopic);
+    if (nextSource !== "All") params.set("source", nextSource);
     const response = await fetch(`/api/stories?${params}`);
     const page = (await response.json()) as PageResult<Story> | { error: string };
     setLoadingMore(false);
@@ -86,7 +93,12 @@ export function TodayView({
 
   function selectTopic(nextTopic: string) {
     setTopic(nextTopic);
-    void loadStories(nextTopic, 0, true);
+    void loadStories(nextTopic, source, 0, true);
+  }
+
+  function selectSource(nextSource: string) {
+    setSource(nextSource);
+    void loadStories(topic, nextSource, 0, true);
   }
 
   useEffect(() => {
@@ -95,12 +107,12 @@ export function TodayView({
 
     const observer = new IntersectionObserver((entries) => {
       if (entries[0]?.isIntersecting && !loadingMore) {
-        void loadStories(topic, nextOffset);
+        void loadStories(topic, source, nextOffset);
       }
     }, { rootMargin: "400px" });
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadingMore, nextOffset, topic]);
+  }, [loadingMore, nextOffset, topic, source]);
 
   return (
     <div className="mx-auto max-w-295 px-4 py-8 md:px-8 md:py-10">
@@ -127,9 +139,19 @@ export function TodayView({
               {option}
             </Button>
           ))}
-          <Button variant="ghost" size="xs" className="ml-auto shrink-0">
-            Sort <ChevronDown className="size-3" />
-          </Button>
+          <label className="ml-auto flex shrink-0 items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#69716d] dark:text-[#aab4af]">
+            Source
+            <select
+              value={source}
+              onChange={(event) => selectSource(event.target.value)}
+              className="h-8 min-w-40 border border-[#cbd1ca] bg-transparent px-2 text-xs normal-case tracking-normal text-[#1c211f] outline-none transition-colors focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]"
+            >
+              {sourceOptions.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none -ml-8 size-3 text-[#8a928e]" />
+          </label>
         </div>
       </section>
 

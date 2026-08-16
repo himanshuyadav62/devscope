@@ -35,17 +35,20 @@ export async function getStoriesPage(
     limit = DEFAULT_PAGE_SIZE,
     offset = 0,
     topic,
+    source,
     savedOnly = false,
   }: {
     limit?: number;
     offset?: number;
     topic?: string | null;
+    source?: string | null;
     savedOnly?: boolean;
   } = {},
 ): Promise<PageResult<Story>> {
   const pageSize = clampPageSize(limit);
   const conditions = [eq(stories.user_id, userId)];
   if (topic && topic !== "All") conditions.push(sql`${topic} = any(${stories.topics})`);
+  if (source && source !== "All") conditions.push(eq(stories.source, source));
   if (savedOnly) conditions.push(eq(stories.is_saved, true));
 
   const rows = await getDb()
@@ -64,11 +67,16 @@ export async function getStoriesPage(
 
 export async function getStoryShellMeta(userId: string): Promise<{
   topics: string[];
+  sources: string[];
   savedStoriesCount: number;
 }> {
-  const [topicRows, savedCount] = await Promise.all([
+  const [topicRows, sourceRows, savedCount] = await Promise.all([
     getDb()
       .select({ topics: stories.topics })
+      .from(stories)
+      .where(eq(stories.user_id, userId)),
+    getDb()
+      .select({ source: stories.source })
       .from(stories)
       .where(eq(stories.user_id, userId)),
     getDb()
@@ -79,6 +87,7 @@ export async function getStoryShellMeta(userId: string): Promise<{
 
   return {
     topics: Array.from(new Set(topicRows.flatMap((row) => row.topics))).sort((a, b) => a.localeCompare(b)),
+    sources: Array.from(new Set(sourceRows.map((row) => row.source))).sort((a, b) => a.localeCompare(b)),
     savedStoriesCount: savedCount[0]?.count ?? 0,
   };
 }
