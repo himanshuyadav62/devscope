@@ -88,7 +88,7 @@ export const feedSources = pgTable(
     user_id: uuid("user_id"),
     name: text("name").notNull(),
     provider: text("provider")
-      .$type<"RSS" | "GitHub" | "GitHub Releases" | "YouTube" | "Hugging Face" | "Hacker News" | "arXiv" | "npm" | "Custom">()
+      .$type<"RSS" | "GitHub" | "GitHub Releases" | "YouTube" | "Hugging Face" | "Hacker News" | "Dev.to" | "arXiv" | "npm" | "Custom">()
       .notNull(),
     url: text("url").notNull(),
     topics: text("topics").array().notNull().default(sql`'{}'::text[]`),
@@ -105,6 +105,9 @@ export const feedSources = pgTable(
         author?: string;
         tags?: string[];
         hnFeed?: "top" | "best" | "new" | "ask" | "show" | "jobs";
+        devToFeed?: "top" | "fresh" | "rising" | "latest" | "all";
+        username?: string;
+        minReactions?: number;
         minScore?: number;
         includeDiscussions?: boolean;
         repositories?: string[];
@@ -140,7 +143,7 @@ export const feedSources = pgTable(
   (table) => [
     check(
       "feed_sources_provider_check",
-      sql`${table.provider} in ('RSS', 'GitHub', 'GitHub Releases', 'YouTube', 'Hugging Face', 'Hacker News', 'arXiv', 'npm', 'Custom')`,
+      sql`${table.provider} in ('RSS', 'GitHub', 'GitHub Releases', 'YouTube', 'Hugging Face', 'Hacker News', 'Dev.to', 'arXiv', 'npm', 'Custom')`,
     ),
     index("feed_sources_enabled_idx").on(table.is_enabled),
     index("feed_sources_user_id_idx").on(table.user_id),

@@ -19,6 +19,7 @@ export const runnableProviders = new Set<FeedSource["provider"]>([
   "YouTube",
   "Hugging Face",
   "Hacker News",
+  "Dev.to",
 ]);
 
 export function canRunSource(source: FeedSource) {

@@ -32,7 +32,7 @@ import { ReactNode, useEffect, useState } from "react";
 function getView(pathname: string): DevscopeView {
   if (pathname === "/library") return "library";
   if (pathname === "/inbox") return "inbox";
-  if (pathname === "/plugins") return "plugins";
+  if (pathname.startsWith("/plugins")) return "plugins";
   return "today";
 }
 

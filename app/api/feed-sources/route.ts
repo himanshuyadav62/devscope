@@ -3,7 +3,7 @@ import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
-const providers = new Set(["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"]);
+const providers = new Set(["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "arXiv", "npm", "Custom"]);
 
 function getHttpUrl(value: string) {
   try {
@@ -57,6 +57,13 @@ export async function POST(request: Request) {
     if (provider === "Hugging Face" && topics.length === 0 && !config.tags?.length && !config.author) {
       return NextResponse.json(
         { error: "Hugging Face Scout requires at least one topic, tag, or author." },
+        { status: 400 },
+      );
+    }
+
+    if (provider === "Dev.to" && topics.length === 0 && !config.tags?.length && !config.username) {
+      return NextResponse.json(
+        { error: "Dev.to Scout requires at least one topic, tag, or username." },
         { status: 400 },
       );
     }

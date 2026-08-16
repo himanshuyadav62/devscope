@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FeedSource, NewFeedSource } from "@/lib/database.types";
 import { FormEvent, useState } from "react";
 
-const providerOptions = ["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "arXiv", "npm", "Custom"] as const;
+const providerOptions = ["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "arXiv", "npm", "Custom"] as const;
 type GitHubReleaseMode = "trending" | "personal" | "selected";
 type GitHubRepositoryOption = {
   fullName: string;
@@ -34,6 +34,26 @@ export function AddFeedSourceDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (source: NewFeedSource) => Promise<void>;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Add feed source</DialogTitle>
+          <DialogDescription>Configure a source for your next feed ingestion run.</DialogDescription>
+        </DialogHeader>
+        <AddFeedSourceForm onAdd={onAdd} onCancel={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+export function AddFeedSourceForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (source: NewFeedSource) => Promise<void>;
+  onCancel?: () => void;
 }) {
   const [provider, setProvider] = useState<FeedSource["provider"]>("RSS");
   const [error, setError] = useState<string | null>(null);
@@ -116,12 +136,20 @@ export function AddFeedSourceDialog({
     const hubType = String(data.get("hubType") ?? "all") as NonNullable<FeedSource["config"]>["hubType"];
     const sort = String(data.get("sort") ?? "trendingScore") as NonNullable<FeedSource["config"]>["sort"];
     const hnFeed = String(data.get("hnFeed") ?? "top") as NonNullable<FeedSource["config"]>["hnFeed"];
+    const devToFeed = String(data.get("devToFeed") ?? "top") as NonNullable<FeedSource["config"]>["devToFeed"];
+    const username = String(data.get("username") ?? "").trim();
     const includeDiscussions = data.get("includeDiscussions") === "on";
     const huggingFaceQuery = encodeURIComponent([...topics, ...tags, author].filter(Boolean).join(" "));
     const huggingFaceUrl = hubType === "all"
       ? `https://huggingface.co/search/full-text?q=${huggingFaceQuery}`
       : `https://huggingface.co/${hubType}?search=${huggingFaceQuery}`;
     const hackerNewsUrl = `https://news.ycombinator.com/${hnFeed === "new" ? "newest" : hnFeed === "show" ? "show" : hnFeed === "ask" ? "ask" : hnFeed === "jobs" ? "jobs" : "news"}`;
+    const devToQuery = encodeURIComponent([...topics, ...tags, username].filter(Boolean).join(" "));
+    const devToUrl = username
+      ? `https://dev.to/${username.replace(/^@/, "")}`
+      : tags[0]
+        ? `https://dev.to/t/${tags[0]}`
+        : `https://dev.to/search?q=${devToQuery}`;
 
     try {
       await onAdd({
@@ -141,6 +169,8 @@ export function AddFeedSourceDialog({
               ? huggingFaceUrl
               : provider === "Hacker News"
                 ? hackerNewsUrl
+                : provider === "Dev.to"
+                  ? devToUrl
                 : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
@@ -162,6 +192,8 @@ export function AddFeedSourceDialog({
               ? { mode: "discover", hubType, sort, author, tags, limit: Number(data.get("limit")) || 12 }
               : provider === "Hacker News"
                 ? { mode: "discover", hnFeed, minScore: Number(data.get("minScore")) || 0, includeDiscussions, limit: Number(data.get("limit")) || 15 }
+                : provider === "Dev.to"
+                  ? { mode: "discover", devToFeed, username: username.replace(/^@/, ""), tags, days: Number(data.get("days")) || 14, minReactions: Number(data.get("minReactions")) || 0, limit: Number(data.get("limit")) || 15 }
                 : {},
       });
       setSaving(false);
@@ -172,12 +204,6 @@ export function AddFeedSourceDialog({
   }
 
   return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add feed source</DialogTitle>
-          <DialogDescription>Configure a source for your next feed ingestion run.</DialogDescription>
-        </DialogHeader>
         <form onSubmit={submit} className="mt-6">
           <ToggleGroup
             value={[provider]}
@@ -204,6 +230,7 @@ export function AddFeedSourceDialog({
             : provider === "YouTube" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">YouTube Scout finds recent videos by topic, selected channels, or both.</p>
               : provider === "Hugging Face" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.</p>
                 : provider === "Hacker News" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.</p>
+                  : provider === "Dev.to" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Dev.to Scout pulls public DEV Community articles by tag, topic, author, or feed mode without an API key.</p>
                   : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
@@ -231,15 +258,14 @@ export function AddFeedSourceDialog({
             : provider === "YouTube" ? <YouTubeFields />
               : provider === "Hugging Face" ? <HuggingFaceFields />
                 : provider === "Hacker News" ? <HackerNewsFields />
+                  : provider === "Dev.to" ? <DevToFields />
                   : null}
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <DialogFooter className="mt-6">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+            {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button> : null}
             <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Add source"}</Button>
           </DialogFooter>
         </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -478,6 +504,26 @@ function HackerNewsFields() {
           <input id="hn-discussions" name="includeDiscussions" type="checkbox" defaultChecked className="size-4 accent-[#1e5f4d]" />
           Include discussion posts
         </label>
+      </div>
+    </>
+  );
+}
+
+function DevToFields() {
+  return (
+    <>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <SelectField id="devto-feed" name="devToFeed" label="Feed" options={[["top", "Top"], ["fresh", "Fresh"], ["rising", "Rising"], ["latest", "Latest"], ["all", "All"]]} />
+        <NumberField id="devto-reactions" name="minReactions" label="Min reactions" min={0} defaultValue={0} />
+      </div>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="devto-tags">Tags (optional)</label>
+      <Input id="devto-tags" name="tags" className="mt-2" placeholder="javascript, webdev, ai" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Use DEV tag names without #. Topics above also help filter and rank articles.</p>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="devto-username">Author or organization (optional)</label>
+      <Input id="devto-username" name="username" className="mt-2" placeholder="ben, devteam, forem" />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <NumberField id="devto-days" name="days" label="Published within" min={1} max={365} defaultValue={14} />
+        <NumberField id="devto-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
       </div>
     </>
   );

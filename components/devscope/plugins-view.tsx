@@ -1,6 +1,5 @@
 "use client";
 
-import { AddFeedSourceDialog } from "@/components/devscope/add-feed-source-dialog";
 import { EmptyState } from "@/components/devscope/empty-state";
 import {
   DISPLAY_LOCALE,
@@ -11,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import type { FeedSource, NewFeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
+import type { FeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
 import { CalendarClock, ExternalLink, GitFork, Newspaper, Plus, RefreshCw, Rss, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -26,7 +25,6 @@ export function PluginsView({
   const router = useRouter();
   const [sources, setSources] = useState(initialSources);
   const [schedules, setSchedules] = useState(initialSchedules);
-  const [showAddSource, setShowAddSource] = useState(false);
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduleName, setScheduleName] = useState("Daily active plugin run");
   const [notice, setNotice] = useState<string | null>(null);
@@ -34,21 +32,6 @@ export function PluginsView({
   const [syncingAllSources, setSyncingAllSources] = useState(false);
   const enabledCount = sources.filter((source) => source.is_enabled).length;
   const runnableCount = sources.filter(canRunSource).length;
-
-  async function addFeedSource(input: NewFeedSource) {
-    const response = await fetch("/api/feed-sources", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    });
-    const result = (await response.json()) as FeedSource | { error: string };
-    if (!response.ok) throw new Error("error" in result ? result.error : "Save failed.");
-
-    setSources((current) => [result as FeedSource, ...current]);
-    setShowAddSource(false);
-    setNotice("Feed source saved to the database.");
-    router.refresh();
-  }
 
   async function toggleFeedSource(source: FeedSource) {
     const nextValue = !source.is_enabled;
@@ -200,7 +183,7 @@ export function PluginsView({
             <RefreshCw className={syncingAllSources ? "size-4 animate-spin" : "size-4"} />
             {syncingAllSources ? "Running active" : "Run active"}
           </Button>
-          <Button onClick={() => setShowAddSource(true)} size="sm">
+          <Button onClick={() => router.push("/plugins/new")} size="sm">
             <Plus className="size-4" />
             Add source
           </Button>
@@ -268,10 +251,8 @@ export function PluginsView({
           {sources.map((source) => <PluginSourceRow key={source.id} source={source} syncingSourceId={syncingSourceId} syncingAllSources={syncingAllSources} onSync={syncFeedSource} onToggle={toggleFeedSource} />)}
         </div>
       ) : (
-        <EmptyState title="No feed sources yet" text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, arXiv, npm, or custom source to configure your feed." />
+        <EmptyState title="No feed sources yet" text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, Dev.to, arXiv, npm, or custom source to configure your feed." />
       )}
-
-      <AddFeedSourceDialog open={showAddSource} onOpenChange={setShowAddSource} onAdd={addFeedSource} />
     </div>
   );
 }
@@ -309,7 +290,9 @@ function PluginSourceRow({
               ? <Sparkles className="size-4" />
               : source.provider === "Hacker News"
                 ? <Newspaper className="size-4" />
-                : <Rss className="size-4" />}
+                : source.provider === "Dev.to"
+                  ? <Newspaper className="size-4" />
+                  : <Rss className="size-4" />}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
