@@ -19,11 +19,12 @@ export async function proxy(request: NextRequest) {
   });
 
   const { data } = await supabase.auth.getClaims();
+  const isCronRoute = request.nextUrl.pathname === "/api/schedules/run";
   const isPublicAuthRoute =
     request.nextUrl.pathname === "/login" ||
     request.nextUrl.pathname.startsWith("/auth/");
 
-  if (!data?.claims && !isPublicAuthRoute) {
+  if (!data?.claims && !isPublicAuthRoute && !isCronRoute) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set(
