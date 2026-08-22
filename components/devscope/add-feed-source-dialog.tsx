@@ -132,11 +132,14 @@ export function AddFeedSourceForm({
     ])).slice(0, 30);
     const channels = csv("channels");
     const tags = csv("tags");
+    const categories = csv("categories");
     const author = String(data.get("author") ?? "").trim();
     const hubType = String(data.get("hubType") ?? "all") as NonNullable<FeedSource["config"]>["hubType"];
     const sort = String(data.get("sort") ?? "trendingScore") as NonNullable<FeedSource["config"]>["sort"];
     const hnFeed = String(data.get("hnFeed") ?? "top") as NonNullable<FeedSource["config"]>["hnFeed"];
     const devToFeed = String(data.get("devToFeed") ?? "top") as NonNullable<FeedSource["config"]>["devToFeed"];
+    const arxivSearchIn = String(data.get("arxivSearchIn") ?? "all") as NonNullable<FeedSource["config"]>["arxivSearchIn"];
+    const arxivSort = String(data.get("arxivSort") ?? "submittedDate") as NonNullable<FeedSource["config"]>["arxivSort"];
     const username = String(data.get("username") ?? "").trim();
     const includeDiscussions = data.get("includeDiscussions") === "on";
     const huggingFaceQuery = encodeURIComponent([...topics, ...tags, author].filter(Boolean).join(" "));
@@ -150,6 +153,8 @@ export function AddFeedSourceForm({
       : tags[0]
         ? `https://dev.to/t/${tags[0]}`
         : `https://dev.to/search?q=${devToQuery}`;
+    const arxivQuery = encodeURIComponent([...topics, ...categories, author].filter(Boolean).join(" "));
+    const arxivUrl = `https://arxiv.org/search/?query=${arxivQuery}&searchtype=all`;
 
     try {
       await onAdd({
@@ -171,6 +176,8 @@ export function AddFeedSourceForm({
                 ? hackerNewsUrl
                 : provider === "Dev.to"
                   ? devToUrl
+                  : provider === "arXiv"
+                    ? arxivUrl
                 : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
@@ -194,6 +201,8 @@ export function AddFeedSourceForm({
                 ? { mode: "discover", hnFeed, minScore: Number(data.get("minScore")) || 0, includeDiscussions, limit: Number(data.get("limit")) || 15 }
                 : provider === "Dev.to"
                   ? { mode: "discover", devToFeed, username: username.replace(/^@/, ""), tags, days: Number(data.get("days")) || 14, minReactions: Number(data.get("minReactions")) || 0, limit: Number(data.get("limit")) || 15 }
+                  : provider === "arXiv"
+                    ? { mode: "discover", categories, author, arxivSearchIn, arxivSort, days: Number(data.get("days")) || 30, limit: Number(data.get("limit")) || 15 }
                 : {},
       });
       setSaving(false);
@@ -231,6 +240,7 @@ export function AddFeedSourceForm({
               : provider === "Hugging Face" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.</p>
                 : provider === "Hacker News" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.</p>
                   : provider === "Dev.to" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Dev.to Scout pulls public DEV Community articles by tag, topic, author, or feed mode without an API key.</p>
+                    : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract without an API key.</p>
                   : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
@@ -259,6 +269,7 @@ export function AddFeedSourceForm({
               : provider === "Hugging Face" ? <HuggingFaceFields />
                 : provider === "Hacker News" ? <HackerNewsFields />
                   : provider === "Dev.to" ? <DevToFields />
+                    : provider === "arXiv" ? <ArxivFields />
                   : null}
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <DialogFooter className="mt-6">
@@ -524,6 +535,26 @@ function DevToFields() {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <NumberField id="devto-days" name="days" label="Published within" min={1} max={365} defaultValue={14} />
         <NumberField id="devto-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
+      </div>
+    </>
+  );
+}
+
+function ArxivFields() {
+  return (
+    <>
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <SelectField id="arxiv-search-in" name="arxivSearchIn" label="Search in" options={[["all", "All fields"], ["title", "Title"], ["abstract", "Abstract"]]} />
+        <SelectField id="arxiv-sort" name="arxivSort" label="Sort" options={[["submittedDate", "Newest"], ["lastUpdatedDate", "Recently updated"], ["relevance", "Relevance"]]} />
+      </div>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="arxiv-categories">Categories (optional)</label>
+      <Input id="arxiv-categories" name="categories" className="mt-2" placeholder="cs.AI, cs.LG, cs.CL, cs.CR" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Use arXiv category codes. Good dev-focused examples: cs.AI, cs.LG, cs.CL, cs.CR, cs.SE, cs.PL, cs.DB, cs.DC.</p>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="arxiv-author">Author (optional)</label>
+      <Input id="arxiv-author" name="author" className="mt-2" placeholder="Yoshua Bengio, Leslie Lamport" />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        <NumberField id="arxiv-days" name="days" label="Submitted within" min={1} max={365} defaultValue={30} />
+        <NumberField id="arxiv-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
       </div>
     </>
   );

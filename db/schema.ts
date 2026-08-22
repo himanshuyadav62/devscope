@@ -104,6 +104,9 @@ export const feedSources = pgTable(
         sort?: "trendingScore" | "downloads" | "likes" | "lastModified";
         author?: string;
         tags?: string[];
+        categories?: string[];
+        arxivSearchIn?: "all" | "title" | "abstract";
+        arxivSort?: "submittedDate" | "lastUpdatedDate" | "relevance";
         hnFeed?: "top" | "best" | "new" | "ask" | "show" | "jobs";
         devToFeed?: "top" | "fresh" | "rising" | "latest" | "all";
         username?: string;

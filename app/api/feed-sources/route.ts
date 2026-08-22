@@ -68,6 +68,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (provider === "arXiv" && topics.length === 0 && !config.categories?.length && !config.author) {
+      return NextResponse.json(
+        { error: "arXiv Scout requires at least one topic, category, or author." },
+        { status: 400 },
+      );
+    }
+
     const source = await createFeedSource(user.id, { name, provider, url, topics, config });
     return NextResponse.json(source, { status: 201 });
   } catch (error) {
