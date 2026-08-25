@@ -17,6 +17,8 @@ type ArxivEntry = {
   comment: string | null;
 };
 
+const DEFAULT_CATEGORIES = ["cs.AI", "cs.LG", "cs.CL", "cs.SE", "cs.CR"];
+
 function clampInteger(value: unknown, fallback: number, min: number, max: number) {
   return typeof value === "number" && Number.isFinite(value)
     ? Math.min(max, Math.max(min, Math.round(value)))
@@ -103,24 +105,22 @@ function dateRange(days: number) {
 }
 
 function buildSearchQuery({
-  topics,
-  categories,
+  topic,
+  category,
   author,
   field,
   days,
 }: {
-  topics: string[];
-  categories: string[];
+  topic: string;
+  category: string;
   author: string;
   field: ArxivSearchIn;
   days: number;
 }) {
   const fieldPrefix = field === "title" ? "ti" : field === "abstract" ? "abs" : "all";
-  const topicTerms = topics.map((topic) => `${fieldPrefix}:${compactQueryTerm(topic)}`);
-  const categoryTerms = categories.map((category) => `cat:${category}`);
   const terms = [
-    topicTerms.length ? `(${topicTerms.join(" OR ")})` : null,
-    categoryTerms.length ? `(${categoryTerms.join(" OR ")})` : null,
+    topic ? `${fieldPrefix}:${compactQueryTerm(topic)}` : null,
+    category ? `cat:${category}` : null,
     author ? `au:${compactQueryTerm(author)}` : null,
     dateRange(days),
   ].filter(Boolean);
@@ -175,21 +175,35 @@ export class ArxivProvider implements FeedProvider {
     const config = source.config ?? {};
     const limit = clampInteger(config.limit, 15, 1, 30);
     const days = clampInteger(config.days, 30, 1, 365);
-    const categories = getList(config.categories).slice(0, 10);
+    const configuredCategories = getList(config.categories).slice(0, 10);
     const author = getString(config.author);
     const field = searchIn(config.arxivSearchIn);
     const arxivSort = sortBy(config.arxivSort);
-    const topics = source.topics.map((item) => item.trim()).filter(Boolean).slice(0, 8);
-    const searchQuery = buildSearchQuery({ topics, categories, author, field, days });
-    const params = new URLSearchParams({
-      search_query: searchQuery,
-      start: "0",
-      max_results: String(Math.min(100, Math.max(limit * 4, 20))),
-      sortBy: arxivSort,
-      sortOrder: "descending",
-    });
-
-    const entries = await fetchArxiv(params);
+    const topics = getList(source.topics).slice(0, 8);
+    const categories = configuredCategories.length || topics.length || author
+      ? configuredCategories
+      : DEFAULT_CATEGORIES;
+    const searches = [
+      ...topics.map((topic) => ({ topic, category: "" })),
+      ...categories.map((category) => ({ topic: "", category })),
+    ].slice(0, 10);
+    if (!searches.length) searches.push({ topic: "", category: "" });
+    const responses = await Promise.all(
+      searches.map((search) => {
+        const searchQuery = buildSearchQuery({ ...search, author, field, days });
+        const params = new URLSearchParams({
+          search_query: searchQuery,
+          start: "0",
+          max_results: String(Math.min(50, Math.max(Math.ceil((limit * 4) / searches.length), 8))),
+          sortBy: arxivSort,
+          sortOrder: "descending",
+        });
+        return fetchArxiv(params);
+      }),
+    );
+    const entries = Array.from(
+      new Map(responses.flat().map((entry) => [entry.abstractUrl, entry])).values(),
+    );
 
     return entries
       .filter((entry) => entry.title && entry.abstractUrl)

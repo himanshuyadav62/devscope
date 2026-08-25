@@ -239,8 +239,8 @@ export function AddFeedSourceForm({
             : provider === "YouTube" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">YouTube Scout finds recent videos by topic, selected channels, or both.</p>
               : provider === "Hugging Face" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.</p>
                 : provider === "Hacker News" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.</p>
-                  : provider === "Dev.to" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Dev.to Scout pulls public DEV Community articles by tag, topic, author, or feed mode without an API key.</p>
-                    : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract without an API key.</p>
+                  : provider === "Dev.to" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Dev.to Scout pulls public DEV Community articles by tag, topic, author, or feed mode. Keywords are optional.</p>
+                    : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract. Without keywords, it uses useful CS defaults.</p>
                   : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />

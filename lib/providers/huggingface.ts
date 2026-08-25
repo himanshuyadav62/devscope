@@ -143,18 +143,18 @@ async function discoverKind(
   limit: number,
 ) {
   const config = source.config ?? {};
-  const searches = topics.length ? topics : [""];
-  const requests = searches.slice(0, 6).map((topic) => {
+  const searches = Array.from(new Set([...topics, ...tags])).slice(0, 8);
+  if (!searches.length) searches.push("");
+  const requests = searches.map((topic) => {
     const params = new URLSearchParams({
       sort: sortValue(config.sort),
       direction: "-1",
-      limit: String(Math.min(50, Math.max(limit * 2, 12))),
+      limit: String(Math.min(50, Math.max(Math.ceil((limit * 3) / searches.length), 12))),
       full: "true",
     });
     if (topic) params.set("search", topic);
     const author = getString(config.author);
     if (author) params.set("author", author);
-    for (const tag of tags.slice(0, 8)) params.append("filter", tag);
     return huggingFaceRequest(kind, params);
   });
 
@@ -213,7 +213,7 @@ export class HuggingFaceProvider implements FeedProvider {
   async discover(source: FeedSource): Promise<DiscoveredStory[]> {
     const config = source.config ?? {};
     const limit = clampInteger(config.limit, 12, 1, 30);
-    const topics = source.topics.map((item) => item.trim()).filter(Boolean).slice(0, 8);
+    const topics = getList(source.topics).slice(0, 8);
     const tags = getList(config.tags).slice(0, 8);
     const hubType = getString(config.hubType);
     const kinds: HuggingFaceKind[] = hubType === "models"
@@ -223,10 +223,6 @@ export class HuggingFaceProvider implements FeedProvider {
         : hubType === "spaces"
           ? ["space"]
           : ["model", "dataset", "space"];
-
-    if (!topics.length && !tags.length && !getString(config.author)) {
-      throw new Error("Hugging Face Scout needs at least one topic, tag, or author.");
-    }
 
     const perKindLimit = Math.min(30, Math.max(limit, Math.ceil(limit / kinds.length) * 2));
     const results = await Promise.all(

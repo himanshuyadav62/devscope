@@ -111,6 +111,10 @@ function matchesTopics(article: DevToArticle, topics: string[]) {
   return topics.some((topic) => text.includes(topic.toLowerCase()));
 }
 
+function topicToTag(topic: string) {
+  return topic.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
 export class DevToProvider implements FeedProvider {
   async discover(source: FeedSource): Promise<DiscoveredStory[]> {
     const config = source.config ?? {};
@@ -121,17 +125,29 @@ export class DevToProvider implements FeedProvider {
     const username = getString(config.username);
     const tags = getList(config.tags).slice(0, 8);
     const topics = source.topics.map((item) => item.trim()).filter(Boolean).slice(0, 8);
-    const params = new URLSearchParams({
-      page: "1",
-      per_page: String(Math.min(100, Math.max(limit * 4, 30))),
-    });
+    const searchTags = Array.from(new Set([
+      ...tags,
+      ...topics.map(topicToTag).filter((topic) => topic.length >= 2),
+    ])).slice(0, 8);
+    const searches = searchTags.length ? searchTags.map((tag) => ({ tag })) : [{ tag: "" }];
+    const responses = await Promise.all(
+      searches.map(({ tag }) => {
+        const params = new URLSearchParams({
+          page: "1",
+          per_page: String(Math.min(100, Math.max(Math.ceil((limit * 4) / searches.length), 12))),
+        });
 
-    if (username) params.set("username", username.replace(/^@/, ""));
-    if (tags.length) params.set(tags.length === 1 ? "tag" : "tags", tags.join(","));
-    if (feed === "top") params.set("top", String(days));
-    if (feed === "fresh" || feed === "rising" || feed === "all") params.set("state", feed);
+        if (username) params.set("username", username.replace(/^@/, ""));
+        if (tag) params.set("tag", tag);
+        if (feed === "top") params.set("top", String(days));
+        if (feed === "fresh" || feed === "rising" || feed === "all") params.set("state", feed);
 
-    const articles = await devToRequest(feed === "latest" ? "articles/latest" : "articles", params);
+        return devToRequest(feed === "latest" ? "articles/latest" : "articles", params);
+      }),
+    );
+    const articles = Array.from(
+      new Map(responses.flat().map((article) => [article.url, article])).values(),
+    );
 
     return articles
       .filter((article) => article.title && article.url)
