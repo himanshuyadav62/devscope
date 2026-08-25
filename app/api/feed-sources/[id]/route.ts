@@ -1,4 +1,4 @@
-import { setFeedSourceEnabled } from "@/lib/data";
+import { deleteFeedSource, setFeedSourceEnabled } from "@/lib/data";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
@@ -22,6 +22,26 @@ export async function PATCH(
     return NextResponse.json(source);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not update source.";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const user = await requireUser();
+    const { id } = await context.params;
+    const source = await deleteFeedSource(user.id, id);
+
+    if (!source) {
+      return NextResponse.json({ error: "Source not found." }, { status: 404 });
+    }
+
+    return NextResponse.json({ deleted: true, source });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Could not delete source.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

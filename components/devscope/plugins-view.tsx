@@ -9,6 +9,14 @@ import {
 } from "@/components/devscope/constants";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import type { FeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
 import type { PluginRecommendation } from "@/lib/plugin-recommendations";
@@ -33,6 +41,8 @@ export function PluginsView({
   const [notice, setNotice] = useState<string | null>(null);
   const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
   const [syncingAllSources, setSyncingAllSources] = useState(false);
+  const [sourceToDelete, setSourceToDelete] = useState<FeedSource | null>(null);
+  const [deletingSourceId, setDeletingSourceId] = useState<string | null>(null);
   const enabledCount = sources.filter((source) => source.is_enabled).length;
   const runnableCount = sources.filter(canRunSource).length;
 
@@ -165,8 +175,57 @@ export function PluginsView({
     }
   }
 
+  async function deleteSource() {
+    if (!sourceToDelete) return;
+
+    setDeletingSourceId(sourceToDelete.id);
+    try {
+      const response = await fetch(`/api/feed-sources/${sourceToDelete.id}`, { method: "DELETE" });
+      const result = (await response.json()) as { deleted?: boolean; error?: string };
+      if (!response.ok || !result.deleted) {
+        setNotice(result.error ?? "Could not delete source.");
+        return;
+      }
+
+      const deletedName = sourceToDelete.name;
+      setSources((current) => current.filter((source) => source.id !== sourceToDelete.id));
+      setSourceToDelete(null);
+      setNotice(`${deletedName} was deleted. Existing feed items were kept.`);
+      router.refresh();
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Could not delete source.");
+    } finally {
+      setDeletingSourceId(null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-262.5 px-4 py-8 md:px-8 md:py-10">
+      <Dialog
+        open={Boolean(sourceToDelete)}
+        onOpenChange={(open) => {
+          if (!open && !deletingSourceId) setSourceToDelete(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete plugin?</DialogTitle>
+            <DialogDescription>
+              {sourceToDelete
+                ? `${sourceToDelete.name} will stop running and its configuration will be permanently removed. Existing feed items will stay in your feed.`
+                : "This plugin configuration will be permanently removed."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={Boolean(deletingSourceId)} onClick={() => setSourceToDelete(null)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" disabled={Boolean(deletingSourceId)} onClick={deleteSource}>
+              {deletingSourceId ? "Deleting…" : "Delete plugin"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {notice ? (
         <Button onClick={() => setNotice(null)} className="fixed bottom-5 right-5 z-30 shadow-xl">
           {notice}
@@ -193,17 +252,19 @@ export function PluginsView({
         </div>
       </div>
 
-      {recommendations.length ? (
-        <section className="mt-6 border-b border-[#d8dcd6] pb-6 dark:border-[#2b3530]">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">Recommended for you</p>
-              <h2 className="mt-1 text-lg font-bold">Useful sources you have not added yet</h2>
-            </div>
-            <p className="max-w-md text-xs leading-5 text-[#737c77] dark:text-[#aab4af]">
-              Suggestions use your feed interests and current plugins. You can review every setting before adding one.
-            </p>
+      <section className="mt-6 border-b border-[#d8dcd6] pb-6 dark:border-[#2b3530]" aria-labelledby="plugin-recommendations-heading">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">Recommended for you</p>
+            <h2 id="plugin-recommendations-heading" className="mt-1 text-lg font-bold">
+              {recommendations.length ? "Useful sources you have not added yet" : "Your recommended sources are covered"}
+            </h2>
           </div>
+          <p className="max-w-md text-xs leading-5 text-[#737c77] dark:text-[#aab4af]">
+            Suggestions use your feed interests and current plugins. You can review every setting before adding one.
+          </p>
+        </div>
+        {recommendations.length ? (
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             {recommendations.map((recommendation) => (
               <PluginRecommendationCard
@@ -222,8 +283,24 @@ export function PluginsView({
               />
             ))}
           </div>
-        </section>
-      ) : null}
+        ) : (
+          <div className="mt-4 flex flex-wrap items-center gap-4 border border-[#d8dcd6] bg-white/55 p-4 dark:border-[#2b3530] dark:bg-[#151b18]/70">
+            <span className="grid size-9 shrink-0 place-items-center bg-[#e7efe9] text-[#1e5f4d] dark:bg-[#25312b] dark:text-[#9acbb8]">
+              <Sparkles className="size-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold">You already have every recommended discovery plugin type.</p>
+              <p className="mt-1 text-xs leading-5 text-[#69716d] dark:text-[#aab4af]">
+                You can still add another source with different topics, channels, repositories, or filters.
+              </p>
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={() => router.push("/plugins/new")}>
+              Browse source options
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
+        )}
+      </section>
 
       <section className="mt-6 border-y border-[#cbd1ca] py-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -283,7 +360,7 @@ export function PluginsView({
 
       {sources.length ? (
         <div className="mt-6 divide-y divide-[#d8dcd6] border-t border-[#cbd1ca]">
-          {sources.map((source) => <PluginSourceRow key={source.id} source={source} syncingSourceId={syncingSourceId} syncingAllSources={syncingAllSources} onSync={syncFeedSource} onToggle={toggleFeedSource} />)}
+          {sources.map((source) => <PluginSourceRow key={source.id} source={source} syncingSourceId={syncingSourceId} syncingAllSources={syncingAllSources} deletingSourceId={deletingSourceId} onSync={syncFeedSource} onToggle={toggleFeedSource} onDelete={setSourceToDelete} />)}
         </div>
       ) : (
         <EmptyState title="No feed sources yet" text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, Dev.to, arXiv, npm, or custom source to configure your feed." />
@@ -328,14 +405,18 @@ function PluginSourceRow({
   source,
   syncingSourceId,
   syncingAllSources,
+  deletingSourceId,
   onSync,
   onToggle,
+  onDelete,
 }: {
   source: FeedSource;
   syncingSourceId: string | null;
   syncingAllSources: boolean;
+  deletingSourceId: string | null;
   onSync: (source: FeedSource) => void;
   onToggle: (source: FeedSource) => void;
+  onDelete: (source: FeedSource) => void;
 }) {
   const href = getExternalHref(source.url);
   const lastSynced = source.last_synced_at
@@ -397,6 +478,18 @@ function PluginSourceRow({
         </Button>
       ) : null}
       <Switch checked={source.is_enabled} onCheckedChange={() => onToggle(source)} aria-label={source.is_enabled ? `Disable ${source.name}` : `Enable ${source.name}`} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        disabled={Boolean(deletingSourceId) || syncingSourceId === source.id}
+        onClick={() => onDelete(source)}
+        aria-label={`Delete ${source.name}`}
+        title="Delete plugin"
+        className="text-[#9b3434] hover:text-[#7f1d1d] dark:text-[#ff8a8a] dark:hover:text-[#ffb4b4]"
+      >
+        <Trash2 className="size-4" />
+      </Button>
     </div>
   );
 }

@@ -224,6 +224,18 @@ export async function setFeedSourceEnabled(
   return source;
 }
 
+export async function deleteFeedSource(
+  userId: string,
+  id: string,
+): Promise<FeedSource | null> {
+  const [source] = await getDb()
+    .delete(feedSources)
+    .where(and(eq(feedSources.id, id), eq(feedSources.user_id, userId)))
+    .returning();
+
+  return source ?? null;
+}
+
 export async function getFeedSource(
   userId: string,
   id: string,
