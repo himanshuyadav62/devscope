@@ -19,6 +19,16 @@ import {
   Star,
 } from "lucide-react";
 
+function sourceAccentClass(accent: string | null) {
+  if (accent === "#24292f") return "text-[#24292f] dark:text-[#c9d1d9]";
+  if (accent === "#0a0a0a") return "text-[#0a0a0a] dark:text-[#f5f5f5]";
+  if (accent === "#b31b1b") return "text-[#b31b1b] dark:text-[#ff8f8f]";
+  if (accent === "#ff6600") return "text-[#b45309] dark:text-[#ffb86c]";
+  if (accent === "#ff0033") return "text-[#d6002b] dark:text-[#ff7a95]";
+  if (accent === "#ff9d00") return "text-[#b66a00] dark:text-[#ffd27a]";
+  return "text-[#1e5f4d] dark:text-[#8bc5af]";
+}
+
 export function StoryRow({
   story,
   index,
@@ -52,7 +62,7 @@ export function StoryRow({
       <div className="font-mono text-xs text-[#a0a7a3]">{String(index + 1).padStart(2, "0")}</div>
       <div className="min-w-0">
         <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px]">
-          <span className="flex items-center gap-1.5 font-bold" style={{ color: story.accent ?? "#1e5f4d" }}>
+          <span className={`flex items-center gap-1.5 font-bold ${sourceAccentClass(story.accent)}`}>
             <KindIcon className="size-3.5" /> {story.source}
           </span>
           <span className="text-[#a0a6a2]">/</span>
