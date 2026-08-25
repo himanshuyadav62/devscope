@@ -4,9 +4,12 @@ import { ArxivProvider } from "@/lib/providers/arxiv";
 import { DevToProvider } from "@/lib/providers/devto";
 import { GitHubReleasesProvider } from "@/lib/providers/github-releases";
 import { GitHubProvider } from "@/lib/providers/github";
+import { GitHubSecurityProvider } from "@/lib/providers/github-security";
 import { HackerNewsProvider } from "@/lib/providers/hackernews";
 import { HuggingFaceProvider } from "@/lib/providers/huggingface";
 import { YouTubeProvider } from "@/lib/providers/youtube";
+import { NpmProvider } from "@/lib/providers/npm";
+import { StackOverflowProvider } from "@/lib/providers/stackoverflow";
 
 export function getFeedProvider(source: FeedSource): FeedProvider {
   if (source.provider === "GitHub") return new GitHubProvider();
@@ -16,5 +19,8 @@ export function getFeedProvider(source: FeedSource): FeedProvider {
   if (source.provider === "Dev.to") return new DevToProvider();
   if (source.provider === "arXiv") return new ArxivProvider();
   if (source.provider === "GitHub Releases") return new GitHubReleasesProvider();
+  if (source.provider === "GitHub Security") return new GitHubSecurityProvider();
+  if (source.provider === "Stack Overflow") return new StackOverflowProvider();
+  if (source.provider === "npm") return new NpmProvider();
   throw new Error(`${source.provider} ingestion is not implemented yet.`);
 }

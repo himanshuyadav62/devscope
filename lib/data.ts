@@ -190,7 +190,7 @@ export async function getRunnableFeedSources(userId: string): Promise<FeedSource
       and(
         eq(feedSources.user_id, userId),
         eq(feedSources.is_enabled, true),
-        sql`${feedSources.provider} in ('GitHub', 'GitHub Releases', 'YouTube', 'Hugging Face', 'Hacker News', 'Dev.to', 'arXiv')`,
+        sql`${feedSources.provider} in ('GitHub', 'GitHub Releases', 'GitHub Security', 'YouTube', 'Hugging Face', 'Hacker News', 'Dev.to', 'Stack Overflow', 'arXiv', 'npm')`,
       ),
     )
     .orderBy(desc(feedSources.created_at));

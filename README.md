@@ -11,8 +11,8 @@ The project currently provides the application shell and database-backed workspa
 - Bookmarking: saved stories appear in the Reading queue.
 - A personal library for links, PDFs, and notes. Valid external links can be opened directly from the library.
 - A Plugins screen for configuring feed sources.
-- Database-backed source configuration for `RSS`, `GitHub`, `GitHub Releases`, `YouTube`, `Hugging Face`, `Hacker News`, `arXiv`, `npm`, and `Custom` providers.
-- On-demand GitHub repository, GitHub release, YouTube video, Hugging Face Hub, and Hacker News discovery from the Plugins screen.
+- Database-backed source configuration for `RSS`, `GitHub`, `GitHub Releases`, `GitHub Security`, `YouTube`, `Hugging Face`, `Hacker News`, `Dev.to`, `Stack Overflow`, `arXiv`, `npm`, and `Custom` providers.
+- On-demand ingestion for GitHub repositories and releases, reviewed security advisories, npm package releases, Stack Overflow questions, YouTube videos, Hugging Face Hub items, Hacker News, DEV Community, and arXiv.
 - Daily scheduler records that run all active supported plugins when `/api/schedules/run` is triggered by cron.
 - Infinite-scroll pagination for feed, library, and reading queue data with a default page size of 50.
 - Google sign-in through Supabase Auth with cookie-based SSR sessions.
@@ -24,7 +24,7 @@ The project currently provides the application shell and database-backed workspa
 
 ## Current Product Boundary
 
-Devscope supports on-demand and scheduled ingestion for GitHub Radar, GitHub Releases, YouTube Scout, Hugging Face Scout, and Hacker News Scout. The remaining provider adapters are not implemented yet.
+Devscope supports on-demand and scheduled ingestion for every provider listed above except generic RSS and Custom sources.
 
 ## Stack
 
@@ -60,6 +60,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your_publishable_key
 GITHUB_TOKEN=optional_github_token
 YOUTUBE_API_KEY=your_youtube_data_api_key
 HUGGINGFACE_TOKEN=optional_huggingface_token
+STACK_EXCHANGE_KEY=optional_stack_apps_key_for_higher_quota
 CRON_SECRET=random_16_plus_character_secret
 ```
 

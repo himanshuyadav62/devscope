@@ -6,7 +6,7 @@ import type { FeedSource } from "@/lib/database.types";
 export const dynamic = "force-dynamic";
 
 const supportedProviders = new Set<FeedSource["provider"]>([
-  "RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "arXiv", "npm", "Custom",
+  "RSS", "GitHub", "GitHub Releases", "GitHub Security", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "Stack Overflow", "arXiv", "npm", "Custom",
 ]);
 
 function parameter(value: string | string[] | undefined) {

@@ -20,7 +20,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import type { FeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
 import type { PluginRecommendation } from "@/lib/plugin-recommendations";
-import { ArrowRight, CalendarClock, ExternalLink, GitFork, Newspaper, Plus, RefreshCw, Rss, Sparkles, Trash2, Video, X } from "lucide-react";
+import { ArrowRight, CalendarClock, ExternalLink, GitFork, MessageSquare, Newspaper, Package, Plus, RefreshCw, Rss, ShieldAlert, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -257,7 +257,7 @@ export function PluginsView({
           <div>
             <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">Recommended for you</p>
             <h2 id="plugin-recommendations-heading" className="mt-1 text-lg font-bold">
-              {recommendations.length ? "Useful sources you have not added yet" : "Your recommended sources are covered"}
+              {recommendations.length ? "Engineering signal, picked for your stack" : "Your recommended sources are covered"}
             </h2>
           </div>
           <p className="max-w-md text-xs leading-5 text-[#737c77] dark:text-[#aab4af]">
@@ -363,7 +363,7 @@ export function PluginsView({
           {sources.map((source) => <PluginSourceRow key={source.id} source={source} syncingSourceId={syncingSourceId} syncingAllSources={syncingAllSources} deletingSourceId={deletingSourceId} onSync={syncFeedSource} onToggle={toggleFeedSource} onDelete={setSourceToDelete} />)}
         </div>
       ) : (
-        <EmptyState title="No feed sources yet" text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, Dev.to, arXiv, npm, or custom source to configure your feed." />
+        <EmptyState title="No feed sources yet" text="Add security advisories, package releases, Stack Overflow, GitHub, YouTube, Hugging Face, Hacker News, Dev.to, arXiv, RSS, or a custom source." />
       )}
     </div>
   );
@@ -382,6 +382,12 @@ function PluginRecommendationCard({
         <span className="grid size-9 place-items-center bg-[#e7efe9] text-[#1e5f4d] dark:bg-[#25312b] dark:text-[#9acbb8]">
           {recommendation.provider === "GitHub" || recommendation.provider === "GitHub Releases"
             ? <GitFork className="size-4" />
+            : recommendation.provider === "GitHub Security"
+              ? <ShieldAlert className="size-4" />
+              : recommendation.provider === "npm"
+                ? <Package className="size-4" />
+                : recommendation.provider === "Stack Overflow"
+                  ? <MessageSquare className="size-4" />
             : recommendation.provider === "YouTube"
               ? <Video className="size-4" />
               : recommendation.provider === "Hugging Face"
@@ -391,6 +397,10 @@ function PluginRecommendationCard({
         <Badge variant="secondary">{recommendation.provider}</Badge>
       </div>
       <h3 className="mt-4 text-sm font-bold">{recommendation.name}</h3>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <Badge variant="outline">{recommendation.category}</Badge>
+        <Badge variant="outline">{recommendation.access}</Badge>
+      </div>
       <p className="mt-2 text-xs leading-5 text-[#69716d] dark:text-[#aab4af]">{recommendation.description}</p>
       <p className="mt-2 text-[11px] font-medium leading-4 text-[#1e6b55] dark:text-[#8bc5af]">{recommendation.reason}</p>
       <Button type="button" variant="outline" size="sm" className="mt-auto self-start" onClick={onConfigure}>
@@ -432,6 +442,12 @@ function PluginSourceRow({
       <span className="grid size-9 shrink-0 place-items-center bg-white text-[#1e5f4d] dark:bg-[#1c2521] dark:text-[#8bc5af]">
         {source.provider === "GitHub" || source.provider === "GitHub Releases"
           ? <GitFork className="size-4" />
+          : source.provider === "GitHub Security"
+            ? <ShieldAlert className="size-4" />
+            : source.provider === "npm"
+              ? <Package className="size-4" />
+              : source.provider === "Stack Overflow"
+                ? <MessageSquare className="size-4" />
           : source.provider === "YouTube"
             ? <Video className="size-4" />
             : source.provider === "Hugging Face"

@@ -44,7 +44,7 @@ export function AddFeedSourcePage({
         <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">New source</p>
         <h1 className="mt-2 font-heading text-3xl font-semibold md:text-4xl">Add feed source</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#69716d] dark:text-[#aab4af]">
-          Configure GitHub, YouTube, Hugging Face, Hacker News, RSS, or custom sources with more room than the old dialog.
+          Configure security advisories, package releases, Q&amp;A, GitHub, video, research, community, RSS, or custom sources.
         </p>
       </div>
 

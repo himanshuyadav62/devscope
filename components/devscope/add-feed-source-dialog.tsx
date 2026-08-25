@@ -14,7 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { FeedSource, NewFeedSource } from "@/lib/database.types";
 import { FormEvent, useState } from "react";
 
-const providerOptions = ["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "arXiv", "npm", "Custom"] as const;
+const providerOptions = ["RSS", "GitHub", "GitHub Releases", "GitHub Security", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "Stack Overflow", "arXiv", "npm", "Custom"] as const;
 type GitHubReleaseMode = "trending" | "personal" | "selected";
 type GitHubRepositoryOption = {
   fullName: string;
@@ -139,6 +139,8 @@ export function AddFeedSourceForm({
     const channels = csv("channels");
     const tags = csv("tags");
     const categories = csv("categories");
+    const packages = csv("packages");
+    const securityEcosystems = csv("securityEcosystems") as NonNullable<NonNullable<FeedSource["config"]>["securityEcosystems"]>;
     const author = String(data.get("author") ?? "").trim();
     const hubType = String(data.get("hubType") ?? "all") as NonNullable<FeedSource["config"]>["hubType"];
     const sort = String(data.get("sort") ?? "trendingScore") as NonNullable<FeedSource["config"]>["sort"];
@@ -146,6 +148,8 @@ export function AddFeedSourceForm({
     const devToFeed = String(data.get("devToFeed") ?? "top") as NonNullable<FeedSource["config"]>["devToFeed"];
     const arxivSearchIn = String(data.get("arxivSearchIn") ?? "all") as NonNullable<FeedSource["config"]>["arxivSearchIn"];
     const arxivSort = String(data.get("arxivSort") ?? "submittedDate") as NonNullable<FeedSource["config"]>["arxivSort"];
+    const minSeverity = String(data.get("minSeverity") ?? "high") as NonNullable<FeedSource["config"]>["minSeverity"];
+    const stackOverflowSort = String(data.get("stackOverflowSort") ?? "hot") as NonNullable<FeedSource["config"]>["stackOverflowSort"];
     const username = String(data.get("username") ?? "").trim();
     const includeDiscussions = data.get("includeDiscussions") === "on";
     const huggingFaceQuery = encodeURIComponent([...topics, ...tags, author].filter(Boolean).join(" "));
@@ -174,6 +178,8 @@ export function AddFeedSourceForm({
               : releaseMode === "personal" && personalUsername.trim()
                 ? `https://github.com/${personalUsername.trim().replace(/^@/, "")}?tab=stars`
                 : `https://github.com/search?q=${encodeURIComponent([...topics, ...languages, "releases"].join(" "))}&type=repositories`
+          : provider === "GitHub Security"
+            ? `https://github.com/advisories?query=${encodeURIComponent([`severity:${minSeverity}`, ...securityEcosystems.map((ecosystem) => `ecosystem:${ecosystem}`)].join(" "))}`
           : provider === "YouTube"
             ? `https://www.youtube.com/results?search_query=${encodeURIComponent([...topics, ...channels].join(" "))}`
             : provider === "Hugging Face"
@@ -182,8 +188,16 @@ export function AddFeedSourceForm({
                 ? hackerNewsUrl
                 : provider === "Dev.to"
                   ? devToUrl
+                  : provider === "Stack Overflow"
+                    ? tags[0] || topics[0]
+                      ? `https://stackoverflow.com/questions/tagged/${encodeURIComponent(tags[0] || topics[0])}`
+                      : "https://stackoverflow.com/questions"
                   : provider === "arXiv"
                     ? arxivUrl
+                    : provider === "npm"
+                      ? packages[0]
+                        ? `https://www.npmjs.com/package/${packages[0]}`
+                        : "https://www.npmjs.com"
                 : String(data.get("url")).trim(),
         topics,
         config: provider === "GitHub"
@@ -199,6 +213,16 @@ export function AddFeedSourceForm({
                 includePrereleases: data.get("includePrereleases") === "on",
                 limit: Number(data.get("limit")) || 12,
               }
+          : provider === "GitHub Security"
+            ? {
+                mode: "discover",
+                securityEcosystems,
+                packages,
+                minSeverity,
+                minCvss: Number(data.get("minCvss")) || 0,
+                days: Number(data.get("days")) || 30,
+                limit: Number(data.get("limit")) || 20,
+              }
           : provider === "YouTube"
             ? { mode: "discover", channels, days: Number(data.get("days")) || 14, limit: Number(data.get("limit")) || 12 }
             : provider === "Hugging Face"
@@ -207,8 +231,12 @@ export function AddFeedSourceForm({
                 ? { mode: "discover", hnFeed, minScore: Number(data.get("minScore")) || 0, includeDiscussions, limit: Number(data.get("limit")) || 15 }
                 : provider === "Dev.to"
                   ? { mode: "discover", devToFeed, username: username.replace(/^@/, ""), tags, days: Number(data.get("days")) || 14, minReactions: Number(data.get("minReactions")) || 0, limit: Number(data.get("limit")) || 15 }
+                  : provider === "Stack Overflow"
+                    ? { mode: "discover", tags, stackOverflowSort, minScore: Number(data.get("minScore")) || 0, acceptedOnly: data.get("acceptedOnly") === "on", days: Number(data.get("days")) || 14, limit: Number(data.get("limit")) || 20 }
                   : provider === "arXiv"
                     ? { mode: "discover", categories, author, arxivSearchIn, arxivSort, days: Number(data.get("days")) || 30, limit: Number(data.get("limit")) || 15 }
+                    : provider === "npm"
+                      ? { mode: "selected", packages, includePrereleases: data.get("includePrereleases") === "on", days: Number(data.get("days")) || 30, limit: Number(data.get("limit")) || 20 }
                 : {},
       });
       setSaving(false);
@@ -242,11 +270,14 @@ export function AddFeedSourceForm({
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
           {provider === "GitHub" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Radar searches public repositories using your topics and languages.</p>
             : provider === "GitHub Releases" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Releases can discover trending releases, pull from starred/saved repos, or track repos you choose.</p>
+            : provider === "GitHub Security" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Security Advisory Radar tracks GitHub-reviewed vulnerabilities by ecosystem, package, severity, and CVSS score.</p>
             : provider === "YouTube" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">YouTube Scout finds recent videos by topic, selected channels, or both.</p>
               : provider === "Hugging Face" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hugging Face Scout tracks public models, datasets, and Spaces from Hub search.</p>
                 : provider === "Hacker News" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Hacker News Scout pulls public HN stories, Show HN, Ask HN, and jobs without an API key.</p>
                   : provider === "Dev.to" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Dev.to Scout pulls public DEV Community articles by tag, topic, author, or feed mode. Keywords are optional.</p>
+                    : provider === "Stack Overflow" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Stack Overflow Signal finds recent, high-scoring questions for your technologies. Tags and topics are searched separately.</p>
                     : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract. Without keywords, it uses useful CS defaults.</p>
+                      : provider === "npm" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">npm Package Releases tracks newly published versions of packages you choose, with no API key required.</p>
                   : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
           <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" defaultValue={initialTopics.join(", ")} />
@@ -271,11 +302,14 @@ export function AddFeedSourceForm({
                 onLoadPersonalRepositories={loadPersonalRepositories}
               />
             )
+            : provider === "GitHub Security" ? <GitHubSecurityFields />
             : provider === "YouTube" ? <YouTubeFields />
               : provider === "Hugging Face" ? <HuggingFaceFields />
                 : provider === "Hacker News" ? <HackerNewsFields />
                   : provider === "Dev.to" ? <DevToFields />
+                    : provider === "Stack Overflow" ? <StackOverflowFields />
                     : provider === "arXiv" ? <ArxivFields />
+                      : provider === "npm" ? <NpmFields />
                   : null}
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <DialogFooter className="mt-6">
@@ -295,6 +329,66 @@ function GitHubFields() {
         <NumberField id="source-days" name="days" label="Created within" min={1} max={365} defaultValue={30} />
         <NumberField id="source-stars" name="minStars" label="Minimum stars" min={0} defaultValue={25} />
         <NumberField id="source-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+      </div>
+    </>
+  );
+}
+
+function GitHubSecurityFields() {
+  return (
+    <>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="security-ecosystems">Package ecosystems</label>
+      <Input id="security-ecosystems" name="securityEcosystems" className="mt-2" defaultValue="npm, pip, go, rust" placeholder="npm, pip, maven, go, rust" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Supported examples include npm, pip, maven, nuget, composer, go, rust, rubygems, actions, pub, and swift.</p>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="security-packages">Affected packages (optional)</label>
+      <Input id="security-packages" name="packages" className="mt-2" placeholder="next, react, django, serde" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Leave empty for ecosystem-wide advisories, or enter exact package names separated by commas.</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SelectField id="security-severity" name="minSeverity" label="Min severity" options={[["low", "Low"], ["medium", "Medium"], ["high", "High"], ["critical", "Critical"]]} />
+        <div>
+          <label className="block text-xs font-semibold" htmlFor="security-cvss">Minimum CVSS</label>
+          <Input id="security-cvss" name="minCvss" type="number" min={0} max={10} step="0.1" defaultValue={7} className="mt-2" />
+        </div>
+        <NumberField id="security-days" name="days" label="Published within" min={1} max={365} defaultValue={30} />
+        <NumberField id="security-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+      </div>
+    </>
+  );
+}
+
+function StackOverflowFields() {
+  return (
+    <>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="stackoverflow-tags">Stack Overflow tags (optional)</label>
+      <Input id="stackoverflow-tags" name="tags" className="mt-2" placeholder="next.js, typescript, postgresql, docker" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Each tag and topic is searched separately, then results are merged and deduplicated.</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SelectField id="stackoverflow-sort" name="stackOverflowSort" label="Rank by" options={[["hot", "Hot"], ["votes", "Votes"], ["activity", "Activity"], ["creation", "Newest"]]} />
+        <NumberField id="stackoverflow-score" name="minScore" label="Minimum score" min={0} defaultValue={3} />
+        <NumberField id="stackoverflow-days" name="days" label="Created within" min={1} max={365} defaultValue={14} />
+        <NumberField id="stackoverflow-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+      </div>
+      <label className="mt-4 flex items-center gap-2 text-xs font-semibold" htmlFor="stackoverflow-accepted">
+        <input id="stackoverflow-accepted" name="acceptedOnly" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+        Only questions with an accepted answer
+      </label>
+    </>
+  );
+}
+
+function NpmFields() {
+  return (
+    <>
+      <label className="mt-4 block text-xs font-semibold" htmlFor="npm-packages">Packages</label>
+      <Input id="npm-packages" name="packages" required className="mt-2" placeholder="next, react, typescript, drizzle-orm" />
+      <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Use exact npm package names, including scopes such as @supabase/supabase-js.</p>
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <NumberField id="npm-days" name="days" label="Published within" min={1} max={365} defaultValue={30} />
+        <NumberField id="npm-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+        <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="npm-prereleases">
+          <input id="npm-prereleases" name="includePrereleases" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+          Prereleases
+        </label>
       </div>
     </>
   );

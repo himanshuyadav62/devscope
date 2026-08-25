@@ -3,7 +3,7 @@ import type { NewFeedSource } from "@/lib/database.types";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 
-const providers = new Set(["RSS", "GitHub", "GitHub Releases", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "arXiv", "npm", "Custom"]);
+const providers = new Set(["RSS", "GitHub", "GitHub Releases", "GitHub Security", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "Stack Overflow", "arXiv", "npm", "Custom"]);
 
 function getHttpUrl(value: string) {
   try {
@@ -50,6 +50,13 @@ export async function POST(request: Request) {
     if (provider === "YouTube" && topics.length === 0 && !config.channels?.length) {
       return NextResponse.json(
         { error: "YouTube Scout requires at least one topic or channel." },
+        { status: 400 },
+      );
+    }
+
+    if (provider === "npm" && !config.packages?.length) {
+      return NextResponse.json(
+        { error: "npm Package Releases requires at least one package." },
         { status: 400 },
       );
     }

@@ -16,11 +16,14 @@ export const DISPLAY_TIME_ZONE = "Asia/Kolkata";
 export const runnableProviders = new Set<FeedSource["provider"]>([
   "GitHub",
   "GitHub Releases",
+  "GitHub Security",
   "YouTube",
   "Hugging Face",
   "Hacker News",
   "Dev.to",
+  "Stack Overflow",
   "arXiv",
+  "npm",
 ]);
 
 export function canRunSource(source: FeedSource) {
