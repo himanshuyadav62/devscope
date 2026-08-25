@@ -11,16 +11,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import type { FeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
-import { CalendarClock, ExternalLink, GitFork, Newspaper, Plus, RefreshCw, Rss, Sparkles, Trash2, Video, X } from "lucide-react";
+import type { PluginRecommendation } from "@/lib/plugin-recommendations";
+import { ArrowRight, CalendarClock, ExternalLink, GitFork, Newspaper, Plus, RefreshCw, Rss, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function PluginsView({
   initialSources,
   initialSchedules,
+  recommendations,
 }: {
   initialSources: FeedSource[];
   initialSchedules: PluginSchedule[];
+  recommendations: PluginRecommendation[];
 }) {
   const router = useRouter();
   const [sources, setSources] = useState(initialSources);
@@ -190,6 +193,38 @@ export function PluginsView({
         </div>
       </div>
 
+      {recommendations.length ? (
+        <section className="mt-6 border-b border-[#d8dcd6] pb-6 dark:border-[#2b3530]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">Recommended for you</p>
+              <h2 className="mt-1 text-lg font-bold">Useful sources you have not added yet</h2>
+            </div>
+            <p className="max-w-md text-xs leading-5 text-[#737c77] dark:text-[#aab4af]">
+              Suggestions use your feed interests and current plugins. You can review every setting before adding one.
+            </p>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {recommendations.map((recommendation) => (
+              <PluginRecommendationCard
+                key={recommendation.provider}
+                recommendation={recommendation}
+                onConfigure={() => {
+                  const params = new URLSearchParams({
+                    provider: recommendation.provider,
+                    name: recommendation.name,
+                  });
+                  if (recommendation.suggestedTopics.length) {
+                    params.set("topics", recommendation.suggestedTopics.join(", "));
+                  }
+                  router.push(`/plugins/new?${params.toString()}`);
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="mt-6 border-y border-[#cbd1ca] py-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -254,6 +289,38 @@ export function PluginsView({
         <EmptyState title="No feed sources yet" text="Add an RSS, GitHub, YouTube, Hugging Face, Hacker News, Dev.to, arXiv, npm, or custom source to configure your feed." />
       )}
     </div>
+  );
+}
+
+function PluginRecommendationCard({
+  recommendation,
+  onConfigure,
+}: {
+  recommendation: PluginRecommendation;
+  onConfigure: () => void;
+}) {
+  return (
+    <article className="flex min-h-56 flex-col border border-[#d8dcd6] bg-white/55 p-4 dark:border-[#2b3530] dark:bg-[#151b18]/70">
+      <div className="flex items-center justify-between gap-3">
+        <span className="grid size-9 place-items-center bg-[#e7efe9] text-[#1e5f4d] dark:bg-[#25312b] dark:text-[#9acbb8]">
+          {recommendation.provider === "GitHub" || recommendation.provider === "GitHub Releases"
+            ? <GitFork className="size-4" />
+            : recommendation.provider === "YouTube"
+              ? <Video className="size-4" />
+              : recommendation.provider === "Hugging Face"
+                ? <Sparkles className="size-4" />
+                : <Newspaper className="size-4" />}
+        </span>
+        <Badge variant="secondary">{recommendation.provider}</Badge>
+      </div>
+      <h3 className="mt-4 text-sm font-bold">{recommendation.name}</h3>
+      <p className="mt-2 text-xs leading-5 text-[#69716d] dark:text-[#aab4af]">{recommendation.description}</p>
+      <p className="mt-2 text-[11px] font-medium leading-4 text-[#1e6b55] dark:text-[#8bc5af]">{recommendation.reason}</p>
+      <Button type="button" variant="outline" size="sm" className="mt-auto self-start" onClick={onConfigure}>
+        Configure
+        <ArrowRight className="size-3.5" />
+      </Button>
+    </article>
   );
 }
 

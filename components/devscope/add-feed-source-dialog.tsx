@@ -51,11 +51,17 @@ export function AddFeedSourceDialog({
 export function AddFeedSourceForm({
   onAdd,
   onCancel,
+  initialProvider = "RSS",
+  initialName = "",
+  initialTopics = [],
 }: {
   onAdd: (source: NewFeedSource) => Promise<void>;
   onCancel?: () => void;
+  initialProvider?: FeedSource["provider"];
+  initialName?: string;
+  initialTopics?: string[];
 }) {
-  const [provider, setProvider] = useState<FeedSource["provider"]>("RSS");
+  const [provider, setProvider] = useState<FeedSource["provider"]>(initialProvider);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [releaseMode, setReleaseMode] = useState<GitHubReleaseMode>("trending");
@@ -232,7 +238,7 @@ export function AddFeedSourceForm({
             ))}
           </ToggleGroup>
           <label className="mt-5 block text-xs font-semibold" htmlFor="source-name">Name</label>
-          <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" />
+          <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" defaultValue={initialName} />
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
           {provider === "GitHub" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Radar searches public repositories using your topics and languages.</p>
             : provider === "GitHub Releases" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Releases can discover trending releases, pull from starred/saved repos, or track repos you choose.</p>
@@ -243,7 +249,7 @@ export function AddFeedSourceForm({
                     : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract. Without keywords, it uses useful CS defaults.</p>
                   : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
-          <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" />
+          <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" defaultValue={initialTopics.join(", ")} />
           {provider === "GitHub" ? <GitHubFields />
             : provider === "GitHub Releases" ? (
               <GitHubReleasesFields

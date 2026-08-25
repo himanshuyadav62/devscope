@@ -7,7 +7,15 @@ import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function AddFeedSourcePage() {
+export function AddFeedSourcePage({
+  initialProvider,
+  initialName,
+  initialTopics,
+}: {
+  initialProvider?: FeedSource["provider"];
+  initialName?: string;
+  initialTopics?: string[];
+}) {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -41,7 +49,13 @@ export function AddFeedSourcePage() {
       </div>
 
       <section className="mt-8 rounded-2xl border border-[#d8dcd6] bg-white/40 p-5 dark:border-[#2b3530] dark:bg-[#151b18]/60 md:p-7">
-        <AddFeedSourceForm onAdd={addFeedSource} onCancel={() => router.push("/plugins")} />
+        <AddFeedSourceForm
+          onAdd={addFeedSource}
+          onCancel={() => router.push("/plugins")}
+          initialProvider={initialProvider}
+          initialName={initialName}
+          initialTopics={initialTopics}
+        />
       </section>
 
       {notice ? (
