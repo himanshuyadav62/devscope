@@ -1,23 +1,44 @@
 "use client";
 
 import { AddFeedSourceForm } from "@/components/devscope/add-feed-source-dialog";
+import { PluginRecommendations } from "@/components/devscope/plugin-recommendations";
 import { Button } from "@/components/ui/button";
 import type { FeedSource, NewFeedSource } from "@/lib/database.types";
+import type { PluginRecommendation } from "@/lib/plugin-recommendations";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export function AddFeedSourcePage({
   initialProvider,
   initialName,
   initialTopics,
+  recommendations,
 }: {
   initialProvider?: FeedSource["provider"];
   initialName?: string;
   initialTopics?: string[];
+  recommendations: PluginRecommendation[];
 }) {
   const router = useRouter();
   const [notice, setNotice] = useState<string | null>(null);
+  const [draft, setDraft] = useState({
+    provider: initialProvider ?? "RSS" as FeedSource["provider"],
+    name: initialName ?? "",
+    topics: initialTopics ?? [],
+  });
+  const formSectionRef = useRef<HTMLElement>(null);
+
+  function configureRecommendation(recommendation: PluginRecommendation) {
+    setDraft({
+      provider: recommendation.provider,
+      name: recommendation.name,
+      topics: recommendation.suggestedTopics,
+    });
+    requestAnimationFrame(() => {
+      formSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
 
   async function addFeedSource(input: NewFeedSource) {
     const response = await fetch("/api/feed-sources", {
@@ -34,7 +55,7 @@ export function AddFeedSourcePage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 md:px-8 md:py-10">
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-8 md:py-10">
       <Button variant="ghost" size="sm" className="mb-6 px-0" onClick={() => router.push("/plugins")}>
         <ArrowLeft className="size-4" />
         Back to plugins
@@ -48,13 +69,21 @@ export function AddFeedSourcePage({
         </p>
       </div>
 
-      <section className="mt-8 rounded-2xl border border-[#d8dcd6] bg-white/40 p-5 dark:border-[#2b3530] dark:bg-[#151b18]/60 md:p-7">
+      <PluginRecommendations
+        recommendations={recommendations}
+        selectedProvider={draft.provider === "RSS" ? undefined : draft.provider}
+        onConfigure={configureRecommendation}
+      />
+
+      <section ref={formSectionRef} className="mt-8 scroll-mt-6 rounded-2xl border border-[#d8dcd6] bg-white/40 p-5 dark:border-[#2b3530] dark:bg-[#151b18]/60 md:p-7">
+        <p className="text-xs font-semibold uppercase text-[#1e6b55] dark:text-[#8bc5af]">Configure source</p>
         <AddFeedSourceForm
+          key={`${draft.provider}:${draft.name}:${draft.topics.join("|")}`}
           onAdd={addFeedSource}
           onCancel={() => router.push("/plugins")}
-          initialProvider={initialProvider}
-          initialName={initialName}
-          initialTopics={initialTopics}
+          initialProvider={draft.provider}
+          initialName={draft.name}
+          initialTopics={draft.topics}
         />
       </section>
 

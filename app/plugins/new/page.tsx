@@ -1,7 +1,9 @@
 import { getShellData, requireDevscopeUser } from "@/app/devscope-data";
 import { AppShell } from "@/components/devscope/app-shell";
 import { AddFeedSourcePage } from "@/components/devscope/add-feed-source-page";
+import { getFeedSources } from "@/lib/data";
 import type { FeedSource } from "@/lib/database.types";
+import { getPluginRecommendations } from "@/lib/plugin-recommendations";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +21,9 @@ export default async function NewPluginSourcePage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const user = await requireDevscopeUser();
-  const [{ topics, savedStoriesCount }, params] = await Promise.all([
+  const [{ topics, savedStoriesCount }, feedSources, params] = await Promise.all([
     getShellData(user.id),
+    getFeedSources(user.id),
     searchParams,
   ]);
   const requestedProvider = parameter(params.provider) as FeedSource["provider"];
@@ -31,10 +34,15 @@ export default async function NewPluginSourcePage({
     .map((topic) => topic.trim())
     .filter(Boolean)
     .slice(0, 12);
+  const recommendations = getPluginRecommendations({
+    topics: [...topics, ...feedSources.flatMap((source) => source.topics)],
+    sources: feedSources,
+    includeInstalled: true,
+  });
 
   return (
     <AppShell topics={topics} savedStoriesCount={savedStoriesCount} user={user}>
-      <AddFeedSourcePage initialProvider={initialProvider} initialName={initialName} initialTopics={initialTopics} />
+      <AddFeedSourcePage initialProvider={initialProvider} initialName={initialName} initialTopics={initialTopics} recommendations={recommendations} />
     </AppShell>
   );
 }

@@ -8,9 +8,10 @@ export type PluginRecommendation = {
   suggestedTopics: string[];
   category: string;
   access: string;
+  isInstalled: boolean;
 };
 
-type RecommendationDefinition = Omit<PluginRecommendation, "reason" | "suggestedTopics"> & {
+type RecommendationDefinition = Omit<PluginRecommendation, "reason" | "suggestedTopics" | "isInstalled"> & {
   baseScore: number;
   fallbackTopics?: string[];
   interestTerms: string[];
@@ -126,11 +127,13 @@ function matchingTopics(topics: string[], interestTerms: string[]) {
 export function getPluginRecommendations({
   topics,
   sources,
-  limit = 3,
+  limit = recommendationCatalog.length,
+  includeInstalled = false,
 }: {
   topics: string[];
   sources: FeedSource[];
   limit?: number;
+  includeInstalled?: boolean;
 }): PluginRecommendation[] {
   const installedProviders = new Set(sources.map((source) => source.provider));
   const uniqueTopics = Array.from(
@@ -138,7 +141,7 @@ export function getPluginRecommendations({
   );
 
   return recommendationCatalog
-    .filter((recommendation) => !installedProviders.has(recommendation.provider))
+    .filter((recommendation) => includeInstalled || !installedProviders.has(recommendation.provider))
     .map((recommendation) => {
       const matches = matchingTopics(uniqueTopics, recommendation.interestTerms).slice(0, 4);
       const suggestedTopics = matches.length ? matches : recommendation.fallbackTopics ?? [];
@@ -157,6 +160,7 @@ export function getPluginRecommendations({
       description: recommendation.description,
       category: recommendation.category,
       access: recommendation.access,
+      isInstalled: installedProviders.has(recommendation.provider),
       reason: matches.length
         ? `Fits your interest${matches.length === 1 ? "" : "s"} in ${matches.join(", ")}.`
         : "A useful, high-signal addition to a developer feed.",
