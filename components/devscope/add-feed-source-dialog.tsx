@@ -16,6 +16,7 @@ import { FormEvent, useState } from "react";
 
 const providerOptions = ["RSS", "GitHub", "GitHub Releases", "GitHub Security", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "Stack Overflow", "arXiv", "npm", "Custom"] as const;
 type GitHubReleaseMode = "trending" | "personal" | "selected";
+type FeedSourceConfig = FeedSource["config"];
 type GitHubRepositoryOption = {
   fullName: string;
   url: string;
@@ -54,23 +55,41 @@ export function AddFeedSourceForm({
   initialProvider = "RSS",
   initialName = "",
   initialTopics = [],
+  initialSource,
+  submitLabel = "Add source",
 }: {
   onAdd: (source: NewFeedSource) => Promise<void>;
   onCancel?: () => void;
   initialProvider?: FeedSource["provider"];
   initialName?: string;
   initialTopics?: string[];
+  initialSource?: FeedSource;
+  submitLabel?: string;
 }) {
-  const [provider, setProvider] = useState<FeedSource["provider"]>(initialProvider);
+  const initialConfig = initialSource?.config ?? {};
+  const resolvedProvider = initialSource?.provider ?? initialProvider;
+  const initialReleaseMode = initialConfig.mode === "personal" || initialConfig.mode === "selected" || initialConfig.mode === "trending"
+    ? initialConfig.mode
+    : "trending";
+  const [provider, setProvider] = useState<FeedSource["provider"]>(resolvedProvider);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [releaseMode, setReleaseMode] = useState<GitHubReleaseMode>("trending");
-  const [selectedReleaseRepositories, setSelectedReleaseRepositories] = useState<GitHubRepositoryOption[]>([]);
+  const [releaseMode, setReleaseMode] = useState<GitHubReleaseMode>(initialReleaseMode);
+  const [selectedReleaseRepositories, setSelectedReleaseRepositories] = useState<GitHubRepositoryOption[]>(
+    (initialConfig.repositories ?? []).map((fullName) => ({
+      fullName,
+      url: `https://github.com/${fullName}`,
+      description: null,
+      stars: 0,
+      language: null,
+      topics: [],
+    })),
+  );
   const [releaseRepoQuery, setReleaseRepoQuery] = useState("");
   const [releaseRepoResults, setReleaseRepoResults] = useState<GitHubRepositoryOption[]>([]);
   const [releaseRepoLoading, setReleaseRepoLoading] = useState(false);
   const [releaseRepoError, setReleaseRepoError] = useState<string | null>(null);
-  const [personalUsername, setPersonalUsername] = useState("");
+  const [personalUsername, setPersonalUsername] = useState(initialConfig.githubUsername ?? "");
   const [personalRepositories, setPersonalRepositories] = useState<GitHubRepositoryOption[]>([]);
   const [personalLoading, setPersonalLoading] = useState(false);
 
@@ -266,7 +285,7 @@ export function AddFeedSourceForm({
             ))}
           </ToggleGroup>
           <label className="mt-5 block text-xs font-semibold" htmlFor="source-name">Name</label>
-          <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" defaultValue={initialName} />
+          <Input id="source-name" name="name" required autoFocus className="mt-2" placeholder="e.g. OpenAI research" defaultValue={initialSource?.name ?? initialName} />
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-url">Source URL</label>
           {provider === "GitHub" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Radar searches public repositories using your topics and languages.</p>
             : provider === "GitHub Releases" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">GitHub Releases can discover trending releases, pull from starred/saved repos, or track repos you choose.</p>
@@ -278,12 +297,13 @@ export function AddFeedSourceForm({
                     : provider === "Stack Overflow" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">Stack Overflow Signal finds recent, high-scoring questions for your technologies. Tags and topics are searched separately.</p>
                     : provider === "arXiv" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">arXiv Scout finds recent papers by topic, subject category, author, title, or abstract. Without keywords, it uses useful CS defaults.</p>
                       : provider === "npm" ? <p className="mt-2 text-xs leading-5 text-[#737c77]">npm Package Releases tracks newly published versions of packages you choose, with no API key required.</p>
-                  : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" />}
+                  : <Input id="source-url" name="url" type="url" required className="mt-2" placeholder="https://example.com/feed.xml" defaultValue={initialSource?.url} />}
           <label className="mt-4 block text-xs font-semibold" htmlFor="source-topics">Topics</label>
-          <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" defaultValue={initialTopics.join(", ")} />
-          {provider === "GitHub" ? <GitHubFields />
+          <Input id="source-topics" name="topics" className="mt-2" placeholder="AI, TypeScript, Security" defaultValue={(initialSource?.topics ?? initialTopics).join(", ")} />
+          {provider === "GitHub" ? <GitHubFields config={initialConfig} />
             : provider === "GitHub Releases" ? (
               <GitHubReleasesFields
+                config={initialConfig}
                 mode={releaseMode}
                 onModeChange={setReleaseMode}
                 selectedRepositories={selectedReleaseRepositories}
@@ -302,91 +322,91 @@ export function AddFeedSourceForm({
                 onLoadPersonalRepositories={loadPersonalRepositories}
               />
             )
-            : provider === "GitHub Security" ? <GitHubSecurityFields />
-            : provider === "YouTube" ? <YouTubeFields />
-              : provider === "Hugging Face" ? <HuggingFaceFields />
-                : provider === "Hacker News" ? <HackerNewsFields />
-                  : provider === "Dev.to" ? <DevToFields />
-                    : provider === "Stack Overflow" ? <StackOverflowFields />
-                    : provider === "arXiv" ? <ArxivFields />
-                      : provider === "npm" ? <NpmFields />
+            : provider === "GitHub Security" ? <GitHubSecurityFields config={initialConfig} />
+            : provider === "YouTube" ? <YouTubeFields config={initialConfig} />
+              : provider === "Hugging Face" ? <HuggingFaceFields config={initialConfig} />
+                : provider === "Hacker News" ? <HackerNewsFields config={initialConfig} />
+                  : provider === "Dev.to" ? <DevToFields config={initialConfig} />
+                    : provider === "Stack Overflow" ? <StackOverflowFields config={initialConfig} />
+                    : provider === "arXiv" ? <ArxivFields config={initialConfig} />
+                      : provider === "npm" ? <NpmFields config={initialConfig} />
                   : null}
           {error ? <p className="mt-3 text-xs text-red-700">{error}</p> : null}
           <DialogFooter className="mt-6">
             {onCancel ? <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button> : null}
-            <Button type="submit" disabled={saving}>{saving ? "Saving..." : "Add source"}</Button>
+            <Button type="submit" disabled={saving}>{saving ? "Saving..." : submitLabel}</Button>
           </DialogFooter>
         </form>
   );
 }
 
-function GitHubFields() {
+function GitHubFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <label className="mt-4 block text-xs font-semibold" htmlFor="source-languages">Languages (optional)</label>
-      <Input id="source-languages" name="languages" className="mt-2" placeholder="TypeScript, Rust, Python" />
+      <Input id="source-languages" name="languages" className="mt-2" placeholder="TypeScript, Rust, Python" defaultValue={config.languages?.join(", ")} />
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <NumberField id="source-days" name="days" label="Created within" min={1} max={365} defaultValue={30} />
-        <NumberField id="source-stars" name="minStars" label="Minimum stars" min={0} defaultValue={25} />
-        <NumberField id="source-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+        <NumberField id="source-days" name="days" label="Created within" min={1} max={365} defaultValue={config.days ?? 30} />
+        <NumberField id="source-stars" name="minStars" label="Minimum stars" min={0} defaultValue={config.minStars ?? 25} />
+        <NumberField id="source-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 12} />
       </div>
     </>
   );
 }
 
-function GitHubSecurityFields() {
+function GitHubSecurityFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <label className="mt-4 block text-xs font-semibold" htmlFor="security-ecosystems">Package ecosystems</label>
-      <Input id="security-ecosystems" name="securityEcosystems" className="mt-2" defaultValue="npm, pip, go, rust" placeholder="npm, pip, maven, go, rust" />
+      <Input id="security-ecosystems" name="securityEcosystems" className="mt-2" defaultValue={config.securityEcosystems?.join(", ") || "npm, pip, go, rust"} placeholder="npm, pip, maven, go, rust" />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Supported examples include npm, pip, maven, nuget, composer, go, rust, rubygems, actions, pub, and swift.</p>
       <label className="mt-4 block text-xs font-semibold" htmlFor="security-packages">Affected packages (optional)</label>
-      <Input id="security-packages" name="packages" className="mt-2" placeholder="next, react, django, serde" />
+      <Input id="security-packages" name="packages" className="mt-2" placeholder="next, react, django, serde" defaultValue={config.packages?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Leave empty for ecosystem-wide advisories, or enter exact package names separated by commas.</p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SelectField id="security-severity" name="minSeverity" label="Min severity" options={[["low", "Low"], ["medium", "Medium"], ["high", "High"], ["critical", "Critical"]]} />
+        <SelectField id="security-severity" name="minSeverity" label="Min severity" defaultValue={config.minSeverity ?? "high"} options={[["low", "Low"], ["medium", "Medium"], ["high", "High"], ["critical", "Critical"]]} />
         <div>
           <label className="block text-xs font-semibold" htmlFor="security-cvss">Minimum CVSS</label>
-          <Input id="security-cvss" name="minCvss" type="number" min={0} max={10} step="0.1" defaultValue={7} className="mt-2" />
+          <Input id="security-cvss" name="minCvss" type="number" min={0} max={10} step="0.1" defaultValue={config.minCvss ?? 7} className="mt-2" />
         </div>
-        <NumberField id="security-days" name="days" label="Published within" min={1} max={365} defaultValue={30} />
-        <NumberField id="security-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+        <NumberField id="security-days" name="days" label="Published within" min={1} max={365} defaultValue={config.days ?? 30} />
+        <NumberField id="security-limit" name="limit" label="Results" min={1} max={50} defaultValue={config.limit ?? 20} />
       </div>
     </>
   );
 }
 
-function StackOverflowFields() {
+function StackOverflowFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <label className="mt-4 block text-xs font-semibold" htmlFor="stackoverflow-tags">Stack Overflow tags (optional)</label>
-      <Input id="stackoverflow-tags" name="tags" className="mt-2" placeholder="next.js, typescript, postgresql, docker" />
+      <Input id="stackoverflow-tags" name="tags" className="mt-2" placeholder="next.js, typescript, postgresql, docker" defaultValue={config.tags?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Each tag and topic is searched separately, then results are merged and deduplicated.</p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SelectField id="stackoverflow-sort" name="stackOverflowSort" label="Rank by" options={[["hot", "Hot"], ["votes", "Votes"], ["activity", "Activity"], ["creation", "Newest"]]} />
-        <NumberField id="stackoverflow-score" name="minScore" label="Minimum score" min={0} defaultValue={3} />
-        <NumberField id="stackoverflow-days" name="days" label="Created within" min={1} max={365} defaultValue={14} />
-        <NumberField id="stackoverflow-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+        <SelectField id="stackoverflow-sort" name="stackOverflowSort" label="Rank by" defaultValue={config.stackOverflowSort ?? "hot"} options={[["hot", "Hot"], ["votes", "Votes"], ["activity", "Activity"], ["creation", "Newest"]]} />
+        <NumberField id="stackoverflow-score" name="minScore" label="Minimum score" min={0} defaultValue={config.minScore ?? 3} />
+        <NumberField id="stackoverflow-days" name="days" label="Created within" min={1} max={365} defaultValue={config.days ?? 14} />
+        <NumberField id="stackoverflow-limit" name="limit" label="Results" min={1} max={50} defaultValue={config.limit ?? 20} />
       </div>
       <label className="mt-4 flex items-center gap-2 text-xs font-semibold" htmlFor="stackoverflow-accepted">
-        <input id="stackoverflow-accepted" name="acceptedOnly" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+        <input id="stackoverflow-accepted" name="acceptedOnly" type="checkbox" defaultChecked={config.acceptedOnly ?? false} className="size-4 accent-[#1e5f4d]" />
         Only questions with an accepted answer
       </label>
     </>
   );
 }
 
-function NpmFields() {
+function NpmFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <label className="mt-4 block text-xs font-semibold" htmlFor="npm-packages">Packages</label>
-      <Input id="npm-packages" name="packages" required className="mt-2" placeholder="next, react, typescript, drizzle-orm" />
+      <Input id="npm-packages" name="packages" required className="mt-2" placeholder="next, react, typescript, drizzle-orm" defaultValue={config.packages?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89] dark:text-[#aab4af]">Use exact npm package names, including scopes such as @supabase/supabase-js.</p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <NumberField id="npm-days" name="days" label="Published within" min={1} max={365} defaultValue={30} />
-        <NumberField id="npm-limit" name="limit" label="Results" min={1} max={50} defaultValue={20} />
+        <NumberField id="npm-days" name="days" label="Published within" min={1} max={365} defaultValue={config.days ?? 30} />
+        <NumberField id="npm-limit" name="limit" label="Results" min={1} max={50} defaultValue={config.limit ?? 20} />
         <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="npm-prereleases">
-          <input id="npm-prereleases" name="includePrereleases" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+          <input id="npm-prereleases" name="includePrereleases" type="checkbox" defaultChecked={config.includePrereleases ?? false} className="size-4 accent-[#1e5f4d]" />
           Prereleases
         </label>
       </div>
@@ -395,6 +415,7 @@ function NpmFields() {
 }
 
 function GitHubReleasesFields({
+  config,
   mode,
   onModeChange,
   selectedRepositories,
@@ -412,6 +433,7 @@ function GitHubReleasesFields({
   personalLoading,
   onLoadPersonalRepositories,
 }: {
+  config: FeedSourceConfig;
   mode: GitHubReleaseMode;
   onModeChange: (mode: GitHubReleaseMode) => void;
   selectedRepositories: GitHubRepositoryOption[];
@@ -455,7 +477,7 @@ function GitHubReleasesFields({
       {mode === "trending" ? (
         <>
           <label className="mt-4 block text-xs font-semibold" htmlFor="release-languages">Languages (optional)</label>
-          <Input id="release-languages" name="languages" className="mt-2" placeholder="TypeScript, Rust, Python" />
+          <Input id="release-languages" name="languages" className="mt-2" placeholder="TypeScript, Rust, Python" defaultValue={config.languages?.join(", ")} />
           <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Use topics above and optional languages to discover active repositories with recent releases.</p>
         </>
       ) : null}
@@ -527,11 +549,11 @@ function GitHubReleasesFields({
       {searchError ? <p className="mt-3 text-xs text-red-700">{searchError}</p> : null}
 
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <NumberField id="release-days" name="days" label="Published within" min={1} max={365} defaultValue={90} />
-        <NumberField id="release-stars" name="minStars" label="Minimum stars" min={0} defaultValue={500} />
-        <NumberField id="release-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+        <NumberField id="release-days" name="days" label="Published within" min={1} max={365} defaultValue={config.days ?? 90} />
+        <NumberField id="release-stars" name="minStars" label="Minimum stars" min={0} defaultValue={config.minStars ?? 500} />
+        <NumberField id="release-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 12} />
         <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="release-prereleases">
-          <input id="release-prereleases" name="includePrereleases" type="checkbox" className="size-4 accent-[#1e5f4d]" />
+          <input id="release-prereleases" name="includePrereleases" type="checkbox" defaultChecked={config.includePrereleases ?? false} className="size-4 accent-[#1e5f4d]" />
           Prereleases
         </label>
       </div>
@@ -570,49 +592,49 @@ function RepositoryPreview({
   );
 }
 
-function YouTubeFields() {
+function YouTubeFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <label className="mt-4 block text-xs font-semibold" htmlFor="source-channels">Channels (optional)</label>
-      <Input id="source-channels" name="channels" className="mt-2" placeholder="@Fireship, @Computerphile, UC channel ID" />
+      <Input id="source-channels" name="channels" className="mt-2" placeholder="@Fireship, @Computerphile, UC channel ID" defaultValue={config.channels?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Separate channels with commas. You can use @handles, channel URLs, or UC channel IDs.</p>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField id="youtube-days" name="days" label="Published within" min={1} max={90} defaultValue={14} />
-        <NumberField id="youtube-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+        <NumberField id="youtube-days" name="days" label="Published within" min={1} max={90} defaultValue={config.days ?? 14} />
+        <NumberField id="youtube-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 12} />
       </div>
     </>
   );
 }
 
-function HuggingFaceFields() {
+function HuggingFaceFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <SelectField id="hf-type" name="hubType" label="Hub type" options={[["all", "All"], ["models", "Models"], ["datasets", "Datasets"], ["spaces", "Spaces"]]} />
-        <SelectField id="hf-sort" name="sort" label="Sort" options={[["trendingScore", "Trending"], ["downloads", "Downloads"], ["likes", "Likes"], ["lastModified", "Recently updated"]]} />
+        <SelectField id="hf-type" name="hubType" label="Hub type" defaultValue={config.hubType ?? "all"} options={[["all", "All"], ["models", "Models"], ["datasets", "Datasets"], ["spaces", "Spaces"]]} />
+        <SelectField id="hf-sort" name="sort" label="Sort" defaultValue={config.sort ?? "trendingScore"} options={[["trendingScore", "Trending"], ["downloads", "Downloads"], ["likes", "Likes"], ["lastModified", "Recently updated"]]} />
       </div>
       <label className="mt-4 block text-xs font-semibold" htmlFor="hf-tags">Tags (optional)</label>
-      <Input id="hf-tags" name="tags" className="mt-2" placeholder="text-generation, gradio, pytorch" />
+      <Input id="hf-tags" name="tags" className="mt-2" placeholder="text-generation, gradio, pytorch" defaultValue={config.tags?.join(", ")} />
       <label className="mt-4 block text-xs font-semibold" htmlFor="hf-author">Author or org (optional)</label>
-      <Input id="hf-author" name="author" className="mt-2" placeholder="openai, google, Qwen" />
+      <Input id="hf-author" name="author" className="mt-2" placeholder="openai, google, Qwen" defaultValue={config.author} />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField id="hf-limit" name="limit" label="Results" min={1} max={30} defaultValue={12} />
+        <NumberField id="hf-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 12} />
       </div>
     </>
   );
 }
 
-function HackerNewsFields() {
+function HackerNewsFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <SelectField id="hn-feed" name="hnFeed" label="Feed" options={[["top", "Top"], ["best", "Best"], ["new", "New"], ["show", "Show HN"], ["ask", "Ask HN"], ["jobs", "Jobs"]]} />
-        <NumberField id="hn-score" name="minScore" label="Minimum score" min={0} defaultValue={10} />
+        <SelectField id="hn-feed" name="hnFeed" label="Feed" defaultValue={config.hnFeed ?? "top"} options={[["top", "Top"], ["best", "Best"], ["new", "New"], ["show", "Show HN"], ["ask", "Ask HN"], ["jobs", "Jobs"]]} />
+        <NumberField id="hn-score" name="minScore" label="Minimum score" min={0} defaultValue={config.minScore ?? 10} />
       </div>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField id="hn-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
+        <NumberField id="hn-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 15} />
         <label className="flex items-end gap-2 pb-2 text-xs font-semibold" htmlFor="hn-discussions">
-          <input id="hn-discussions" name="includeDiscussions" type="checkbox" defaultChecked className="size-4 accent-[#1e5f4d]" />
+          <input id="hn-discussions" name="includeDiscussions" type="checkbox" defaultChecked={config.includeDiscussions ?? true} className="size-4 accent-[#1e5f4d]" />
           Include discussion posts
         </label>
       </div>
@@ -620,41 +642,41 @@ function HackerNewsFields() {
   );
 }
 
-function DevToFields() {
+function DevToFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <SelectField id="devto-feed" name="devToFeed" label="Feed" options={[["top", "Top"], ["fresh", "Fresh"], ["rising", "Rising"], ["latest", "Latest"], ["all", "All"]]} />
-        <NumberField id="devto-reactions" name="minReactions" label="Min reactions" min={0} defaultValue={0} />
+        <SelectField id="devto-feed" name="devToFeed" label="Feed" defaultValue={config.devToFeed ?? "top"} options={[["top", "Top"], ["fresh", "Fresh"], ["rising", "Rising"], ["latest", "Latest"], ["all", "All"]]} />
+        <NumberField id="devto-reactions" name="minReactions" label="Min reactions" min={0} defaultValue={config.minReactions ?? 0} />
       </div>
       <label className="mt-4 block text-xs font-semibold" htmlFor="devto-tags">Tags (optional)</label>
-      <Input id="devto-tags" name="tags" className="mt-2" placeholder="javascript, webdev, ai" />
+      <Input id="devto-tags" name="tags" className="mt-2" placeholder="javascript, webdev, ai" defaultValue={config.tags?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Use DEV tag names without #. Topics above also help filter and rank articles.</p>
       <label className="mt-4 block text-xs font-semibold" htmlFor="devto-username">Author or organization (optional)</label>
-      <Input id="devto-username" name="username" className="mt-2" placeholder="ben, devteam, forem" />
+      <Input id="devto-username" name="username" className="mt-2" placeholder="ben, devteam, forem" defaultValue={config.username} />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField id="devto-days" name="days" label="Published within" min={1} max={365} defaultValue={14} />
-        <NumberField id="devto-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
+        <NumberField id="devto-days" name="days" label="Published within" min={1} max={365} defaultValue={config.days ?? 14} />
+        <NumberField id="devto-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 15} />
       </div>
     </>
   );
 }
 
-function ArxivFields() {
+function ArxivFields({ config }: { config: FeedSourceConfig }) {
   return (
     <>
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <SelectField id="arxiv-search-in" name="arxivSearchIn" label="Search in" options={[["all", "All fields"], ["title", "Title"], ["abstract", "Abstract"]]} />
-        <SelectField id="arxiv-sort" name="arxivSort" label="Sort" options={[["submittedDate", "Newest"], ["lastUpdatedDate", "Recently updated"], ["relevance", "Relevance"]]} />
+        <SelectField id="arxiv-search-in" name="arxivSearchIn" label="Search in" defaultValue={config.arxivSearchIn ?? "all"} options={[["all", "All fields"], ["title", "Title"], ["abstract", "Abstract"]]} />
+        <SelectField id="arxiv-sort" name="arxivSort" label="Sort" defaultValue={config.arxivSort ?? "submittedDate"} options={[["submittedDate", "Newest"], ["lastUpdatedDate", "Recently updated"], ["relevance", "Relevance"]]} />
       </div>
       <label className="mt-4 block text-xs font-semibold" htmlFor="arxiv-categories">Categories (optional)</label>
-      <Input id="arxiv-categories" name="categories" className="mt-2" placeholder="cs.AI, cs.LG, cs.CL, cs.CR" />
+      <Input id="arxiv-categories" name="categories" className="mt-2" placeholder="cs.AI, cs.LG, cs.CL, cs.CR" defaultValue={config.categories?.join(", ")} />
       <p className="mt-1.5 text-[11px] leading-4 text-[#858d89]">Use arXiv category codes. Good dev-focused examples: cs.AI, cs.LG, cs.CL, cs.CR, cs.SE, cs.PL, cs.DB, cs.DC.</p>
       <label className="mt-4 block text-xs font-semibold" htmlFor="arxiv-author">Author (optional)</label>
-      <Input id="arxiv-author" name="author" className="mt-2" placeholder="Yoshua Bengio, Leslie Lamport" />
+      <Input id="arxiv-author" name="author" className="mt-2" placeholder="Yoshua Bengio, Leslie Lamport" defaultValue={config.author} />
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <NumberField id="arxiv-days" name="days" label="Submitted within" min={1} max={365} defaultValue={30} />
-        <NumberField id="arxiv-limit" name="limit" label="Results" min={1} max={30} defaultValue={15} />
+        <NumberField id="arxiv-days" name="days" label="Submitted within" min={1} max={365} defaultValue={config.days ?? 30} />
+        <NumberField id="arxiv-limit" name="limit" label="Results" min={1} max={30} defaultValue={config.limit ?? 15} />
       </div>
     </>
   );
@@ -669,11 +691,11 @@ function NumberField({ id, name, label, min, max, defaultValue }: { id: string; 
   );
 }
 
-function SelectField({ id, name, label, options }: { id: string; name: string; label: string; options: Array<[string, string]> }) {
+function SelectField({ id, name, label, options, defaultValue }: { id: string; name: string; label: string; options: Array<[string, string]>; defaultValue?: string }) {
   return (
     <div>
       <label className="block text-xs font-semibold" htmlFor={id}>{label}</label>
-      <select id={id} name={name} className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]">
+      <select id={id} name={name} defaultValue={defaultValue} className="mt-2 h-10 w-full border border-input bg-transparent px-3 text-sm text-foreground shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:border-[#2b3530] dark:bg-[#151b18] dark:text-[#edf1ee]">
         {options.map(([value, text]) => <option key={value} value={value}>{text}</option>)}
       </select>
     </div>

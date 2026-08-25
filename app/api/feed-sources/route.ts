@@ -1,67 +1,14 @@
 import { createFeedSource } from "@/lib/data";
-import type { NewFeedSource } from "@/lib/database.types";
+import { parseFeedSourceInput } from "@/lib/feed-source-input";
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
-
-const providers = new Set(["RSS", "GitHub", "GitHub Releases", "GitHub Security", "YouTube", "Hugging Face", "Hacker News", "Dev.to", "Stack Overflow", "arXiv", "npm", "Custom"]);
-
-function getHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const body = (await request.json()) as Partial<NewFeedSource>;
-    const name = body.name?.trim();
-    const provider = body.provider;
-    const url = body.url ? getHttpUrl(body.url.trim()) : null;
-    const topics = Array.isArray(body.topics)
-      ? body.topics.map((topic) => topic.trim()).filter(Boolean).slice(0, 12)
-      : [];
-    const config = body.config && typeof body.config === "object" ? body.config : {};
-
-    if (!name || !provider || !providers.has(provider) || !url) {
-      return NextResponse.json(
-        { error: "A name, supported provider, and valid HTTP URL are required." },
-        { status: 400 },
-      );
-    }
-
-    if (provider === "GitHub" && topics.length === 0 && !config.languages?.length) {
-      return NextResponse.json(
-        { error: "GitHub Radar requires at least one topic or language." },
-        { status: 400 },
-      );
-    }
-
-    if (provider === "GitHub Releases" && config.mode === "selected" && !config.repositories?.length) {
-      return NextResponse.json(
-        { error: "GitHub Releases requires at least one repository." },
-        { status: 400 },
-      );
-    }
-
-    if (provider === "YouTube" && topics.length === 0 && !config.channels?.length) {
-      return NextResponse.json(
-        { error: "YouTube Scout requires at least one topic or channel." },
-        { status: 400 },
-      );
-    }
-
-    if (provider === "npm" && !config.packages?.length) {
-      return NextResponse.json(
-        { error: "npm Package Releases requires at least one package." },
-        { status: 400 },
-      );
-    }
-
-    const source = await createFeedSource(user.id, { name, provider, url, topics, config });
+    const parsed = parseFeedSourceInput(await request.json());
+    if ("error" in parsed) return NextResponse.json({ error: parsed.error }, { status: 400 });
+    const source = await createFeedSource(user.id, parsed.data);
     return NextResponse.json(source, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not add source.";

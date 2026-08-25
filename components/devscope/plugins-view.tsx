@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import type { FeedSource, PluginSchedule, SyncFeedSourceResult } from "@/lib/database.types";
-import { CalendarClock, ExternalLink, GitFork, MessageSquare, Newspaper, Package, Plus, RefreshCw, Rss, ShieldAlert, Sparkles, Trash2, Video, X } from "lucide-react";
+import { CalendarClock, ExternalLink, GitFork, MessageSquare, Newspaper, Package, Pencil, Plus, RefreshCw, Rss, ShieldAlert, Sparkles, Trash2, Video, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -333,6 +333,7 @@ function PluginSourceRow({
   onToggle: (source: FeedSource) => void;
   onDelete: (source: FeedSource) => void;
 }) {
+  const router = useRouter();
   const href = getExternalHref(source.url);
   const lastSynced = source.last_synced_at
     ? new Intl.DateTimeFormat(DISPLAY_LOCALE, {
@@ -399,6 +400,17 @@ function PluginSourceRow({
         </Button>
       ) : null}
       <Switch checked={source.is_enabled} onCheckedChange={() => onToggle(source)} aria-label={source.is_enabled ? `Disable ${source.name}` : `Enable ${source.name}`} />
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        disabled={Boolean(deletingSourceId) || syncingSourceId === source.id}
+        onClick={() => router.push(`/plugins/${source.id}/edit`)}
+        aria-label={`Edit ${source.name}`}
+        title="Edit plugin"
+      >
+        <Pencil className="size-4" />
+      </Button>
       <Button
         type="button"
         variant="ghost"
